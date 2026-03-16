@@ -1,0 +1,418 @@
+[
+  {
+    "ID": "user_create_USERNAME_POSITIVE_SUCCESS_2122",
+    "Field": "username",
+    "Input payload": "A000",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid value (Basic)"
+  },
+  {
+    "ID": "user_create_USERNAME_POSITIVE_SUCCESS_8085",
+    "Field": "username",
+    "Input payload": "justin19",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid value (Semantic/Realistic)"
+  },
+  {
+    "ID": "user_create_USERNAME_POSITIVE_SUCCESS_8253",
+    "Field": "username",
+    "Input payload": "7MN7quUqUzGu4bQv",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Max length valid string"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_6455",
+    "Field": "username",
+    "Input payload": null,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Missing required field"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_3867",
+    "Field": "username",
+    "Input payload": "!!!INVALID_REGEX!!!",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Regex mismatch"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_9896",
+    "Field": "username",
+    "Input payload": 123,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_4307",
+    "Field": "username",
+    "Input payload": true,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_4794",
+    "Field": "username",
+    "Input payload": [],
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_7673",
+    "Field": "username",
+    "Input payload": {},
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_USERNAME_NEGATIVE_FAILURE_9113",
+    "Field": "username",
+    "Input payload": "\u0000\u0001\u0002",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Contains control characters"
+  },
+  {
+    "ID": "user_create_USERNAME_BOUNDARY_SUCCESS_2260",
+    "Field": "username",
+    "Input payload": "fxju",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "Min length string (4)"
+  },
+  {
+    "ID": "user_create_USERNAME_BOUNDARY_SUCCESS_8634",
+    "Field": "username",
+    "Input payload": "FvDFBiL7mzqngU8K",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "Max length string (16)"
+  },
+  {
+    "ID": "user_create_USERNAME_BOUNDARY_FAILURE_1987",
+    "Field": "username",
+    "Input payload": "aaa",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Length < min_length (4)"
+  },
+  {
+    "ID": "user_create_USERNAME_BOUNDARY_FAILURE_2086",
+    "Field": "username",
+    "Input payload": "aaaaaaaaaaaaaaaaa",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Length > max_length (16)"
+  },
+  {
+    "ID": "user_create_USERNAME_BOUNDARY_FAILURE_9340",
+    "Field": "username",
+    "Input payload": null,
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Null value"
+  },
+  {
+    "ID": "user_create_USERNAME_BOUNDARY_FAILURE_1743",
+    "Field": "username",
+    "Input payload": "",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Empty string"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_8470",
+    "Field": "username",
+    "Input payload": "' OR '1'='1",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_8030",
+    "Field": "username",
+    "Input payload": "1; DROP TABLE users",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_2031",
+    "Field": "username",
+    "Input payload": "' UNION SELECT * FROM users --",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_1758",
+    "Field": "username",
+    "Input payload": "<script>alert(1)</script>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_3621",
+    "Field": "username",
+    "Input payload": "<img src=x onerror=alert(1)>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_3085",
+    "Field": "username",
+    "Input payload": "javascript:alert(1)",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_1179",
+    "Field": "username",
+    "Input payload": "; ls -la",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_5745",
+    "Field": "username",
+    "Input payload": "| cat /etc/passwd",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_1907",
+    "Field": "username",
+    "Input payload": "`whoami`",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_4742",
+    "Field": "username",
+    "Input payload": "{\"key\": \"value\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "JSON Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_9858",
+    "Field": "username",
+    "Input payload": "{\"$gt\": \"\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "NoSQL Injection"
+  },
+  {
+    "ID": "user_create_USERNAME_SECURITY_FAILURE_3558",
+    "Field": "username",
+    "Input payload": "¾Ög÷ÇfØle",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Fuzzing (Random bytes)"
+  },
+  {
+    "ID": "user_create_PASSWORD_POSITIVE_SUCCESS_6584",
+    "Field": "password",
+    "Input payload": "valid_regex_fallback",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid value (Basic)"
+  },
+  {
+    "ID": "user_create_PASSWORD_POSITIVE_SUCCESS_9694",
+    "Field": "password",
+    "Input payload": "v4FsURTmUK#1",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid value (Semantic/Realistic)"
+  },
+  {
+    "ID": "user_create_PASSWORD_POSITIVE_SUCCESS_8218",
+    "Field": "password",
+    "Input payload": "laCn3oJfmMwmfYGoFJ8MJkEP4fblS6xfvxG6GJGdUYGY18BIkUucpc282R6wwXDZVV15ORAyc3wdbF5oZR3VMClbIMH8MgmAFWdI",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Max length valid string"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_1822",
+    "Field": "password",
+    "Input payload": null,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Missing required field"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_4319",
+    "Field": "password",
+    "Input payload": "!!!INVALID_REGEX!!!",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Regex mismatch"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_4496",
+    "Field": "password",
+    "Input payload": 123,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_6812",
+    "Field": "password",
+    "Input payload": true,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_6459",
+    "Field": "password",
+    "Input payload": [],
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_8637",
+    "Field": "password",
+    "Input payload": {},
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string)"
+  },
+  {
+    "ID": "user_create_PASSWORD_NEGATIVE_FAILURE_6056",
+    "Field": "password",
+    "Input payload": "\u0000\u0001\u0002",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Contains control characters"
+  },
+  {
+    "ID": "user_create_PASSWORD_BOUNDARY_FAILURE_3824",
+    "Field": "password",
+    "Input payload": null,
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Null value"
+  },
+  {
+    "ID": "user_create_PASSWORD_BOUNDARY_SUCCESS_3028",
+    "Field": "password",
+    "Input payload": "",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "Empty string"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_5893",
+    "Field": "password",
+    "Input payload": "' OR '1'='1",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_9898",
+    "Field": "password",
+    "Input payload": "1; DROP TABLE users",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_4007",
+    "Field": "password",
+    "Input payload": "' UNION SELECT * FROM users --",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_9593",
+    "Field": "password",
+    "Input payload": "<script>alert(1)</script>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_9509",
+    "Field": "password",
+    "Input payload": "<img src=x onerror=alert(1)>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_2326",
+    "Field": "password",
+    "Input payload": "javascript:alert(1)",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_6179",
+    "Field": "password",
+    "Input payload": "; ls -la",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_1965",
+    "Field": "password",
+    "Input payload": "| cat /etc/passwd",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_6522",
+    "Field": "password",
+    "Input payload": "`whoami`",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_2773",
+    "Field": "password",
+    "Input payload": "{\"key\": \"value\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "JSON Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_4094",
+    "Field": "password",
+    "Input payload": "{\"$gt\": \"\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "NoSQL Injection"
+  },
+  {
+    "ID": "user_create_PASSWORD_SECURITY_FAILURE_5971",
+    "Field": "password",
+    "Input payload": "6!m\nñ\u0000\u001f",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Fuzzing (Random bytes)"
+  }
+]

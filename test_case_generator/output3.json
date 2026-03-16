@@ -1,0 +1,662 @@
+[
+  {
+    "test_case_id": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_7683",
+    "target_field": "username",
+    "input_value": {
+      "username": "XzRs7av1Lj",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Valid basic value (string)",
+    "created_at": "1996-05-21T20:34:01.805787"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_4803",
+    "target_field": "username",
+    "input_value": {
+      "username": "jun84",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Valid semantic/realistic value",
+    "created_at": "1986-09-25T10:51:33.810257"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_6521",
+    "target_field": "username",
+    "input_value": {
+      "username": "h0Ri12VoQQ8m53uFz1cs",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Max length valid string (20 chars)",
+    "created_at": "2017-08-14T06:30:36.393350"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_1798",
+    "target_field": "username",
+    "input_value": {
+      "username": "A0000",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Min length valid string (5 chars)",
+    "created_at": "1985-09-01T01:45:59.025479"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_6945",
+    "target_field": "username",
+    "input_value": {
+      "username": null,
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Missing required field",
+    "created_at": "1980-11-30T12:44:05.310663"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_7513",
+    "target_field": "username",
+    "input_value": {
+      "username": "1xBIcVROsA%",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Regex pattern mismatch",
+    "created_at": "2008-02-25T22:45:44.990266"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_8194",
+    "target_field": "username",
+    "input_value": {
+      "username": 123,
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Type error (expected string, got int)",
+    "created_at": "2018-08-24T18:39:29.456044"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_6986",
+    "target_field": "username",
+    "input_value": {
+      "username": 123.45,
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Type error (expected string, got float)",
+    "created_at": "2005-08-30T12:48:08.678993"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_4096",
+    "target_field": "username",
+    "input_value": {
+      "username": true,
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Type error (expected string, got bool)",
+    "created_at": "2001-11-24T19:48:03.763608"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_8593",
+    "target_field": "username",
+    "input_value": {
+      "username": "admin",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Reserved word: admin",
+    "created_at": "1985-03-24T16:19:19.697060"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_8064",
+    "target_field": "username",
+    "input_value": {
+      "username": "root",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Reserved word: root",
+    "created_at": "2021-05-27T22:58:10.991933"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_BOUNDARY_SUCCESS_2623",
+    "target_field": "username",
+    "input_value": {
+      "username": "e050hSDsh6nVk0b9Ek0a",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "success",
+    "test_rationale": "String at max length (20)",
+    "created_at": "1976-06-02T01:39:40.725960"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_9797",
+    "target_field": "username",
+    "input_value": {
+      "username": "ghqsOOOOOOOOOOOOOOOOO",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "String exceeds max length (21 > 20)",
+    "created_at": "2005-07-06T11:21:14.181841"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_BOUNDARY_SUCCESS_6964",
+    "target_field": "username",
+    "input_value": {
+      "username": "X6tuO",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "success",
+    "test_rationale": "String at min length (5)",
+    "created_at": "1994-01-06T16:29:45.313748"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_5104",
+    "target_field": "username",
+    "input_value": {
+      "username": "EZ5w",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "String below min length (4 < 5)",
+    "created_at": "1981-09-14T18:44:50.544059"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_1396",
+    "target_field": "username",
+    "input_value": {
+      "username": null,
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "Null value",
+    "created_at": "2023-06-06T17:15:28.717882"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_5533",
+    "target_field": "username",
+    "input_value": {
+      "username": "",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "Empty string",
+    "created_at": "2012-03-28T13:03:32.975867"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_2582",
+    "target_field": "username",
+    "input_value": {
+      "username": "' OR '1'='1",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "SQL Injection attempt",
+    "created_at": "1982-11-10T22:22:27.872989"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_6988",
+    "target_field": "username",
+    "input_value": {
+      "username": "1; DROP TABLE users",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "SQL Injection attempt",
+    "created_at": "1992-08-26T19:18:59.134405"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_9168",
+    "target_field": "username",
+    "input_value": {
+      "username": "<script>alert(1)</script>",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "XSS attempt",
+    "created_at": "1987-08-18T08:24:38.989834"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_8563",
+    "target_field": "username",
+    "input_value": {
+      "username": "<img src=x onerror=alert(1)>",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "XSS attempt",
+    "created_at": "2002-04-09T16:57:31.430683"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_2311",
+    "target_field": "username",
+    "input_value": {
+      "username": "; ls -la",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "Command Injection attempt",
+    "created_at": "1999-05-01T08:38:06.248849"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_9707",
+    "target_field": "username",
+    "input_value": {
+      "username": "| cat /etc/passwd",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "Command Injection attempt",
+    "created_at": "1990-03-04T01:11:29.934924"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_5743",
+    "target_field": "username",
+    "input_value": {
+      "username": "{\"$ne\": null}",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "JSON Injection attempt",
+    "created_at": "1983-08-02T15:54:08.344586"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_5235",
+    "target_field": "username",
+    "input_value": {
+      "username": "{\"key\": \"value\", \"inject\": true}",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "JSON Injection attempt",
+    "created_at": "2022-04-03T03:32:57.452234"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_8256",
+    "target_field": "username",
+    "input_value": {
+      "username": "{\"$gt\": \"\"}",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "NoSQL Injection attempt",
+    "created_at": "2007-12-23T08:13:49.977710"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_1794",
+    "target_field": "username",
+    "input_value": {
+      "username": "{\"$where\": \"1==1\"}",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "NoSQL Injection attempt",
+    "created_at": "1987-10-18T18:55:03.347532"
+  },
+  {
+    "test_case_id": "USER_CREATE_USERNAME_SECURITY_FAILURE_1570",
+    "target_field": "username",
+    "input_value": {
+      "username": "¥ô&ä\u0003\n-±÷~",
+      "password": "!6K4mcPq$mk_"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "Fuzzing attempt",
+    "created_at": "2014-02-06T01:22:34.574227"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_POSITIVE_SUCCESS_2441",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "ý󘟖ûQw😍h᥈$\u001f"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Valid basic value (string)",
+    "created_at": "2020-10-21T05:40:20.226412"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_POSITIVE_SUCCESS_1563",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "s^9AR^OhfcXv"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Valid semantic/realistic value",
+    "created_at": "2021-12-24T04:52:13.975863"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_POSITIVE_SUCCESS_4323",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "Q³At੪\u0005»򭭟@h򋡏Üµ-\t½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½½"
+    },
+    "test_type": "positive",
+    "expected_outcome": "success",
+    "test_rationale": "Max length valid string (100 chars)",
+    "created_at": "2010-11-22T01:08:34.562274"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_9051",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": null
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Missing required field",
+    "created_at": "1985-02-06T09:27:55.347745"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_2741",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "p4rtgzpncA^"
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Regex pattern mismatch",
+    "created_at": "2016-01-31T02:21:21.493855"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_9969",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": 123
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Type error (expected string, got int)",
+    "created_at": "2008-08-29T19:04:15.972460"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_9204",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": 123.45
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Type error (expected string, got float)",
+    "created_at": "1995-02-10T08:29:25.404240"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_9443",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": true
+    },
+    "test_type": "negative",
+    "expected_outcome": "failure",
+    "test_rationale": "Type error (expected string, got bool)",
+    "created_at": "2011-01-15T23:36:29.303074"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_SUCCESS_7639",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "\u0011¼B𽩅𔽌\u0013Ês᪕#»񷐻ör\u0001z?😍"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "success",
+    "test_rationale": "String at max length (100)",
+    "created_at": "1984-01-22T18:21:59.602243"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_8809",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "0󲆍\u001dAà¶lȺ꩔󍶧@ðj\u0004p𺞘%󒕮þþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþþ"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "String exceeds max length (101 > 100)",
+    "created_at": "2018-05-25T21:37:22.808175"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_4966",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": null
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "Null value",
+    "created_at": "1998-08-19T22:35:58.329228"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_SUCCESS_6479",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": ""
+    },
+    "test_type": "boundary",
+    "expected_outcome": "success",
+    "test_rationale": "Empty string",
+    "created_at": "2010-05-24T08:18:14.637142"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_SUCCESS_5885",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "ÔȾMf𑄸Ø󑐚Ö^"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "success",
+    "test_rationale": "Valid special character: '^'",
+    "created_at": "2002-10-14T07:47:50.580896"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_3128",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "Aa0@00000-"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "Illegal special character: '-'",
+    "created_at": "1996-02-28T04:24:35.367948"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_9430",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "0Aa0@0000;"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "Illegal special character: ';'",
+    "created_at": "2018-11-15T19:47:33.434677"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_3312",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "GümÈa৭񪼷񫚭:"
+    },
+    "test_type": "boundary",
+    "expected_outcome": "failure",
+    "test_rationale": "Illegal special character: ':'",
+    "created_at": "1977-11-13T06:23:21.185124"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_3438",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "' OR '1'='1"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "SQL Injection attempt",
+    "created_at": "2021-04-13T00:51:00.842921"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_7237",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "1; DROP TABLE users"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "SQL Injection attempt",
+    "created_at": "1997-11-26T03:37:04.989559"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_1491",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "<script>alert(1)</script>"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "XSS attempt",
+    "created_at": "1998-07-18T15:31:12.433851"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_5709",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "<img src=x onerror=alert(1)>"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "XSS attempt",
+    "created_at": "1999-02-02T20:04:20.342112"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_7264",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "; ls -la"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "Command Injection attempt",
+    "created_at": "2006-05-16T16:24:35.068915"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_7937",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "| cat /etc/passwd"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "Command Injection attempt",
+    "created_at": "1990-09-21T14:33:06.478898"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_8511",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "{\"$ne\": null}"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "JSON Injection attempt",
+    "created_at": "1972-04-25T09:06:57.807975"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_5526",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "{\"key\": \"value\", \"inject\": true}"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "JSON Injection attempt",
+    "created_at": "1998-08-22T06:52:48.602765"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_4961",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "{\"$gt\": \"\"}"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "NoSQL Injection attempt",
+    "created_at": "2020-07-31T19:24:47.782415"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_5150",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "{\"$where\": \"1==1\"}"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "NoSQL Injection attempt",
+    "created_at": "2005-03-02T12:52:05.438711"
+  },
+  {
+    "test_case_id": "USER_CREATE_PASSWORD_SECURITY_FAILURE_4628",
+    "target_field": "password",
+    "input_value": {
+      "username": "lherman",
+      "password": "¥ô&ä\u0003\n-±÷~"
+    },
+    "test_type": "security",
+    "expected_outcome": "failure",
+    "test_rationale": "Fuzzing attempt",
+    "created_at": "2006-02-06T01:57:17.302490"
+  }
+]

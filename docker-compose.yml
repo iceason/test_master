@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # Web应用
+  web:
+    build: .
+    container_name: testmaster_web
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://testmaster:testmaster123@db:5432/testmaster
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=TestCaseGenerator.settings
+      - SECRET_KEY=django-insecure-change-me-in-production
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./reports:/app/reports
+      - ./yaml_configs:/app/yaml_configs
+      - ./static:/app/static
+    command: >
+      sh -c "python3 manage.py migrate &&
+             python3 manage.py collectstatic --noinput &&
+             gunicorn TestCaseGenerator.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120"
+
+  # Celery Worker
+  celery:
+    build: .
+    container_name: testmaster_celery
+    environment:
+      - DATABASE_URL=postgresql://testmaster:testmaster123@db:5432/testmaster
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=TestCaseGenerator.settings
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./reports:/app/reports
+    command: celery -A TestCaseGenerator worker -l info -c 4
+
+  # Celery Beat（定时任务）
+  celery-beat:
+    build: .
+    container_name: testmaster_celery_beat
+    environment:
+      - DATABASE_URL=postgresql://testmaster:testmaster123@db:5432/testmaster
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - DJANGO_SETTINGS_MODULE=TestCaseGenerator.settings
+    depends_on:
+      - db
+      - redis
+    command: celery -A TestCaseGenerator beat -l info
+
+  # PostgreSQL数据库
+  db:
+    image: postgres:15-alpine
+    container_name: testmaster_db
+    environment:
+      - POSTGRES_DB=testmaster
+      - POSTGRES_USER=testmaster
+      - POSTGRES_PASSWORD=testmaster123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testmaster"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis（消息队列和缓存）
+  redis:
+    image: redis:7-alpine
+    container_name: testmaster_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Nginx（反向代理）
+  nginx:
+    image: nginx:alpine
+    container_name: testmaster_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/usr/share/nginx/html/static:ro
+      - ./reports:/usr/share/nginx/html/reports:ro
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,151 @@
+# 接口和测试用例配置示例
+version: '1.0'
+type: 'interfaces'
+interfaces:
+  # 用户注册接口
+  - name: 用户注册
+    method: POST
+    path: /api/v1/users/register
+    schema:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          required: true
+        email:
+          type: string
+          format: email
+          required: true
+        password:
+          type: string
+          minLength: 8
+          required: true
+        phone:
+          type: string
+          pattern: '^\d{11}$'
+          required: false
+    testcases:
+      - name: 正向-注册成功
+        description: 使用有效数据注册新用户
+        test_type: positive
+        request_data:
+          username: testuser001
+          email: test001@example.com
+          password: Test@123456
+          phone: '13800138000'
+        expected_value:
+          status_code: 201
+          assertions:
+            - type: jsonpath
+              actual_path: $.data.user_id
+              expected: null
+              description: 返回用户ID
+            - type: jsonpath
+              actual_path: $.data.username
+              expected: testuser001
+              description: 用户名正确
+      
+      - name: 负向-用户名过短
+        description: 用户名少于3个字符
+        test_type: negative
+        request_data:
+          username: ab
+          email: test@example.com
+          password: Test@123456
+        expected_value:
+          status_code: 400
+          assertions:
+            - type: contains
+              expected: username
+              description: 错误信息包含username
+      
+      - name: 边界-最小长度用户名
+        description: 用户名正好3个字符
+        test_type: boundary
+        request_data:
+          username: abc
+          email: test@example.com
+          password: Test@123456
+        expected_value:
+          status_code: 201
+
+  # 用户登录接口
+  - name: 用户登录
+    method: POST
+    path: /api/v1/auth/login
+    schema:
+      type: object
+      properties:
+        username:
+          type: string
+          required: true
+        password:
+          type: string
+          required: true
+    testcases:
+      - name: 正向-登录成功
+        description: 使用正确的用户名和密码登录
+        test_type: positive
+        request_data:
+          username: testuser
+          password: Test@123456
+        expected_value:
+          status_code: 200
+          assertions:
+            - type: jsonpath
+              actual_path: $.data.token
+              expected: null
+              description: 返回访问令牌
+            - type: response_time
+              expected: 1000
+              description: 响应时间小于1秒
+      
+      - name: 负向-密码错误
+        description: 使用错误的密码
+        test_type: negative
+        request_data:
+          username: testuser
+          password: WrongPassword
+        expected_value:
+          status_code: 401
+          assertions:
+            - type: contains
+              expected: Invalid credentials
+              description: 返回认证失败消息
+
+  # 设备信息查询
+  - name: 设备信息查询
+    method: GET
+    path: /api/v1/devices/{device_id}
+    schema:
+      type: object
+      properties:
+        device_id:
+          type: string
+          required: true
+    testcases:
+      - name: 正向-查询成功
+        description: 查询存在的设备信息
+        test_type: positive
+        request_data:
+          device_id: DEV001
+        expected_value:
+          status_code: 200
+          assertions:
+            - type: jsonpath
+              actual_path: $.data.device_id
+              expected: DEV001
+            - type: jsonpath
+              actual_path: $.data.status
+              expected: null
+              description: 包含状态字段
+      
+      - name: 负向-设备不存在
+        description: 查询不存在的设备
+        test_type: negative
+        request_data:
+          device_id: INVALID_ID
+        expected_value:
+          status_code: 404

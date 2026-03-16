@@ -1,0 +1,38 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "TestCaseGenerator.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+exclude = [
+  "migrations",
+  "__pycache__",
+  "manage.py",
+  "frontend",
+  "frontend_old",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+  "B",    # flake8-bugbear
+  "UP",   # pyupgrade
+]
+ignore = [
+  "E501",   # line too long (handled by formatter)
+  "B008",   # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "TestCaseGenerator"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

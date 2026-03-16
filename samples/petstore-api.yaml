@@ -1,0 +1,1284 @@
+openapi: "3.0.3"
+info:
+  title: 宠物商城 API
+  description: >
+    一个功能完整的宠物商城 RESTful API，涵盖用户管理、商品管理、订单流程等常见业务场景。
+  version: "1.0.0"
+  contact:
+    name: API Support
+    email: support@petstore.com
+
+servers:
+  - url: https://api.petstore.com/v1
+    description: 生产环境
+  - url: https://staging-api.petstore.com/v1
+    description: 测试环境
+
+tags:
+  - name: auth
+    description: 认证与授权
+  - name: users
+    description: 用户管理
+  - name: pets
+    description: 宠物商品管理
+  - name: orders
+    description: 订单管理
+  - name: reviews
+    description: 评价管理
+
+paths:
+  # ──────────────────────────────────────────
+  # 1. 用户登录
+  # ──────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: 用户登录
+      description: 通过用户名和密码登录，返回访问令牌和刷新令牌。支持记住我功能。
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  description: 用户名
+                  example: john_doe
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 128
+                  format: password
+                  description: 密码
+                remember_me:
+                  type: boolean
+                  default: false
+                  description: 是否记住登录状态（延长令牌有效期至30天）
+      responses:
+        "200":
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  message:
+                    type: string
+                    example: 登录成功
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                        description: 访问令牌
+                      refresh_token:
+                        type: string
+                        description: 刷新令牌
+                      expires_in:
+                        type: integer
+                        description: 令牌过期时间（秒）
+                        example: 3600
+                      token_type:
+                        type: string
+                        example: Bearer
+                      user:
+                        $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  # ──────────────────────────────────────────
+  # 2. 用户注册
+  # ──────────────────────────────────────────
+  /users:
+    post:
+      tags: [users]
+      summary: 注册新用户
+      description: >
+        创建新的用户账户。用户名和邮箱必须唯一，
+        密码需要满足复杂度要求（至少包含大小写字母和数字）。
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, confirm_password]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 30
+                  pattern: "^[a-zA-Z0-9_]+$"
+                  description: 用户名（仅允许字母、数字和下划线）
+                  example: new_user
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                  description: 邮箱地址
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  format: password
+                  description: 密码（至少8位，包含大小写字母和数字）
+                confirm_password:
+                  type: string
+                  format: password
+                  description: 确认密码（必须与密码一致）
+                nickname:
+                  type: string
+                  maxLength: 50
+                  description: 昵称
+                  example: 小明
+                phone:
+                  type: string
+                  pattern: "^1[3-9]\\d{9}$"
+                  description: 手机号码（中国大陆）
+                  example: "13812345678"
+                avatar_url:
+                  type: string
+                  format: uri
+                  description: 头像URL
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                  description: 性别
+                birthday:
+                  type: string
+                  format: date
+                  description: 出生日期
+                  example: "1990-01-15"
+      responses:
+        "201":
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  message:
+                    type: string
+                    example: 注册成功
+                  data:
+                    $ref: "#/components/schemas/UserProfile"
+        "409":
+          description: 用户名或邮箱已存在
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ──────────────────────────────────────────
+  # 3 & 4. 获取/更新用户详情
+  # ──────────────────────────────────────────
+  /users/{userId}:
+    get:
+      tags: [users]
+      summary: 获取用户详情
+      description: >
+        根据用户ID获取用户的详细信息。
+        普通用户只能查看自己的信息，管理员可以查看任意用户。
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: 用户唯一标识
+          schema:
+            type: integer
+            minimum: 1
+            example: 42
+        - name: fields
+          in: query
+          required: false
+          description: 指定返回的字段（逗号分隔），不传则返回全部
+          schema:
+            type: string
+            example: id,username,email,nickname
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  data:
+                    $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [users]
+      summary: 更新用户信息
+      description: >
+        更新指定用户的个人信息。仅允许用户修改自己的信息，
+        或管理员修改任意用户信息。部分字段（如 username）创建后不可修改。
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                  maxLength: 50
+                phone:
+                  type: string
+                  pattern: "^1[3-9]\\d{9}$"
+                avatar_url:
+                  type: string
+                  format: uri
+                gender:
+                  type: string
+                  enum: [male, female, other]
+                birthday:
+                  type: string
+                  format: date
+                address:
+                  type: object
+                  properties:
+                    province:
+                      type: string
+                      example: 广东省
+                    city:
+                      type: string
+                      example: 深圳市
+                    district:
+                      type: string
+                      example: 南山区
+                    street:
+                      type: string
+                      example: 科技园路1号
+                    zip_code:
+                      type: string
+                      pattern: "^\\d{6}$"
+                      example: "518000"
+                notification_preferences:
+                  type: object
+                  properties:
+                    email_enabled:
+                      type: boolean
+                      default: true
+                    sms_enabled:
+                      type: boolean
+                      default: false
+                    push_enabled:
+                      type: boolean
+                      default: true
+      responses:
+        "200":
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  message:
+                    type: string
+                    example: 更新成功
+                  data:
+                    $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ──────────────────────────────────────────
+  # 5 & 6. 搜索宠物列表 / 发布宠物商品
+  # ──────────────────────────────────────────
+  /pets:
+    get:
+      tags: [pets]
+      summary: 搜索宠物列表
+      description: 分页查询宠物列表，支持按名称模糊搜索、按类别/状态/价格区间筛选、多字段排序。
+      operationId: searchPets
+      parameters:
+        - name: keyword
+          in: query
+          description: 搜索关键词（匹配名称和描述）
+          schema:
+            type: string
+            maxLength: 100
+            example: 金毛
+        - name: category
+          in: query
+          description: 宠物分类
+          schema:
+            type: string
+            enum: [dog, cat, bird, fish, reptile, small_animal, other]
+        - name: status
+          in: query
+          description: 商品状态
+          schema:
+            type: string
+            enum: [available, pending, sold, off_shelf]
+            default: available
+        - name: min_price
+          in: query
+          description: 最低价格
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            example: 100.00
+        - name: max_price
+          in: query
+          description: 最高价格
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            example: 5000.00
+        - name: tags
+          in: query
+          description: 标签筛选（逗号分隔，取交集）
+          schema:
+            type: string
+            example: "纯种,健康认证"
+        - name: sort_by
+          in: query
+          description: 排序字段
+          schema:
+            type: string
+            enum: [price_asc, price_desc, created_at, popularity, rating]
+            default: created_at
+        - name: page
+          in: query
+          description: 页码（从1开始）
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          description: 每页数量
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Pet"
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags: [pets]
+      summary: 发布新宠物商品
+      description: >
+        发布一个新的宠物商品。需要填写详细信息，包括基本资料、健康信息、价格等。
+        支持上传最多8张图片。
+      operationId: createPet
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, category, breed, price, description]
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  description: 宠物名称
+                  example: "金毛幼犬 — 纯种健康"
+                category:
+                  type: string
+                  enum: [dog, cat, bird, fish, reptile, small_animal, other]
+                  description: 宠物分类
+                breed:
+                  type: string
+                  maxLength: 50
+                  description: 品种
+                  example: 金毛寻回犬
+                age_months:
+                  type: integer
+                  minimum: 0
+                  maximum: 360
+                  description: 年龄（月）
+                  example: 3
+                gender:
+                  type: string
+                  enum: [male, female, unknown]
+                  description: 性别
+                weight_kg:
+                  type: number
+                  format: float
+                  minimum: 0.01
+                  maximum: 500
+                  description: 体重（kg）
+                  example: 5.5
+                price:
+                  type: number
+                  format: float
+                  minimum: 0.01
+                  maximum: 999999.99
+                  description: 售价（元）
+                  example: 3500.00
+                original_price:
+                  type: number
+                  format: float
+                  description: 原价（用于显示折扣）
+                  example: 5000.00
+                description:
+                  type: string
+                  minLength: 10
+                  maxLength: 5000
+                  description: 详细描述（支持Markdown）
+                health_info:
+                  type: string
+                  description: 健康信息（JSON字符串）
+                  example: '{"vaccinated":true,"dewormed":true,"neutered":false,"health_certificate":"HC-2025-001"}'
+                tags:
+                  type: string
+                  description: 标签（逗号分隔）
+                  example: "纯种,健康认证,可爱"
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  minItems: 1
+                  maxItems: 8
+                  description: 宠物图片（最多8张，支持jpg/png/webp，单张不超过5MB）
+                location:
+                  type: string
+                  maxLength: 200
+                  description: 所在地区
+                  example: 广东省深圳市南山区
+                delivery_options:
+                  type: string
+                  description: 配送方式（JSON数组字符串）
+                  example: '["self_pickup", "air_transport", "land_transport"]'
+      responses:
+        "201":
+          description: 发布成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  message:
+                    type: string
+                    example: 发布成功
+                  data:
+                    $ref: "#/components/schemas/Pet"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ──────────────────────────────────────────
+  # 7. 删除宠物商品
+  # ──────────────────────────────────────────
+  /pets/{petId}:
+    delete:
+      tags: [pets]
+      summary: 删除宠物商品
+      description: >
+        删除指定的宠物商品。只有商品发布者或管理员才能删除。
+        已有进行中订单的商品不允许删除。
+      operationId: deletePet
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          description: 宠物商品ID
+          schema:
+            type: integer
+            minimum: 1
+        - name: force
+          in: query
+          description: 是否强制删除（管理员专用，会取消关联的待处理订单）
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "204":
+          description: 删除成功
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: 存在进行中的订单，无法删除
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ──────────────────────────────────────────
+  # 8. 创建订单
+  # ──────────────────────────────────────────
+  /orders:
+    post:
+      tags: [orders]
+      summary: 创建订单
+      description: >
+        为指定宠物创建购买订单。支持选择配送方式、填写收货地址、使用优惠券和留言备注。
+        创建后30分钟内未支付自动取消。
+      operationId: createOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pet_id, delivery_method, shipping_address]
+              properties:
+                pet_id:
+                  type: integer
+                  minimum: 1
+                  description: 宠物商品ID
+                delivery_method:
+                  type: string
+                  enum: [self_pickup, air_transport, land_transport]
+                  description: 配送方式
+                shipping_address:
+                  type: object
+                  required: [receiver_name, phone, province, city, district, detail]
+                  properties:
+                    receiver_name:
+                      type: string
+                      minLength: 2
+                      maxLength: 30
+                      description: 收件人姓名
+                    phone:
+                      type: string
+                      pattern: "^1[3-9]\\d{9}$"
+                      description: 联系电话
+                    province:
+                      type: string
+                      description: 省份
+                    city:
+                      type: string
+                      description: 城市
+                    district:
+                      type: string
+                      description: 区县
+                    detail:
+                      type: string
+                      maxLength: 200
+                      description: 详细地址
+                coupon_code:
+                  type: string
+                  maxLength: 32
+                  description: 优惠券代码
+                  example: NEWUSER2025
+                buyer_message:
+                  type: string
+                  maxLength: 500
+                  description: 买家留言
+                insurance:
+                  type: boolean
+                  default: false
+                  description: 是否购买运输保险
+      responses:
+        "201":
+          description: 订单创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  message:
+                    type: string
+                    example: 订单创建成功，请在30分钟内完成支付
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "400":
+          description: 商品不可购买（已售出/已下架）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ──────────────────────────────────────────
+  # 9. 订单支付
+  # ──────────────────────────────────────────
+  /orders/{orderId}/pay:
+    post:
+      tags: [orders]
+      summary: 订单支付
+      description: >
+        对指定订单发起支付。支持多种支付方式。
+        支付成功后订单状态变为已支付，并通知卖家发货。
+      operationId: payOrder
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          description: 订单ID
+          schema:
+            type: string
+            pattern: "^ORD-\\d{14}-[A-Z0-9]{6}$"
+            example: ORD-20250208120000-A1B2C3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_method]
+              properties:
+                payment_method:
+                  type: string
+                  enum: [alipay, wechat_pay, credit_card, bank_transfer]
+                  description: 支付方式
+                return_url:
+                  type: string
+                  format: uri
+                  description: 支付完成后的回调地址
+      responses:
+        "200":
+          description: 支付请求已受理
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: object
+                    properties:
+                      payment_id:
+                        type: string
+                        description: 支付流水号
+                      payment_url:
+                        type: string
+                        format: uri
+                        description: 支付跳转链接
+                      qr_code:
+                        type: string
+                        description: 支付二维码内容（Base64）
+                      expires_at:
+                        type: string
+                        format: date-time
+                        description: 支付截止时间
+        "400":
+          description: 订单状态不允许支付（已支付/已取消/已超时）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ──────────────────────────────────────────
+  # 10 & 11. 获取评价列表 / 发表评价
+  # ──────────────────────────────────────────
+  /pets/{petId}/reviews:
+    get:
+      tags: [reviews]
+      summary: 获取宠物评价列表
+      description: 分页获取指定宠物商品的用户评价，支持按评分和时间筛选排序，包含评价图片和卖家回复。
+      operationId: getPetReviews
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+        - name: rating
+          in: query
+          description: 按评分筛选（1-5星）
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 5
+        - name: has_image
+          in: query
+          description: 仅显示有图评价
+          schema:
+            type: boolean
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [newest, oldest, highest_rating, lowest_rating, most_helpful]
+            default: newest
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  data:
+                    type: object
+                    properties:
+                      summary:
+                        type: object
+                        properties:
+                          average_rating:
+                            type: number
+                            format: float
+                            example: 4.7
+                          total_reviews:
+                            type: integer
+                            example: 128
+                          rating_distribution:
+                            type: object
+                            properties:
+                              "5":
+                                type: integer
+                                example: 85
+                              "4":
+                                type: integer
+                                example: 30
+                              "3":
+                                type: integer
+                                example: 8
+                              "2":
+                                type: integer
+                                example: 3
+                              "1":
+                                type: integer
+                                example: 2
+                      items:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Review"
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [reviews]
+      summary: 发表评价
+      description: >
+        对已完成的订单中的宠物发表评价。每个订单只能评价一次，评价后不可修改。
+        支持上传评价图片和匿名评价。
+      operationId: createReview
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [order_id, rating, content]
+              properties:
+                order_id:
+                  type: string
+                  description: 关联的订单ID
+                  example: ORD-20250208120000-A1B2C3
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: 评分（1-5星）
+                content:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+                  description: 评价内容（至少10个字符）
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  maxItems: 6
+                  description: 评价图片（最多6张）
+                is_anonymous:
+                  type: boolean
+                  default: false
+                  description: 是否匿名评价
+                tags:
+                  type: array
+                  items:
+                    type: string
+                    enum: [健康活泼, 与描述一致, 卖家服务好, 物流快, 性价比高]
+                  description: 评价标签
+      responses:
+        "201":
+          description: 评价发表成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 0
+                  message:
+                    type: string
+                    example: 评价发表成功
+                  data:
+                    $ref: "#/components/schemas/Review"
+        "400":
+          description: 订单未完成或已评价
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+# ════════════════════════════════════════════
+# 公共组件
+# ════════════════════════════════════════════
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT 访问令牌
+
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        nickname:
+          type: string
+          example: 小明
+        phone:
+          type: string
+          example: "138****5678"
+        avatar_url:
+          type: string
+          format: uri
+        gender:
+          type: string
+          enum: [male, female, other]
+        birthday:
+          type: string
+          format: date
+        role:
+          type: string
+          enum: [user, seller, admin]
+          example: user
+        is_verified:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        last_login_at:
+          type: string
+          format: date-time
+
+    Pet:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        name:
+          type: string
+          example: "金毛幼犬 — 纯种健康"
+        category:
+          type: string
+          example: dog
+        breed:
+          type: string
+          example: 金毛寻回犬
+        age_months:
+          type: integer
+          example: 3
+        gender:
+          type: string
+          example: male
+        weight_kg:
+          type: number
+          example: 5.5
+        price:
+          type: number
+          example: 3500.00
+        original_price:
+          type: number
+          example: 5000.00
+        description:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        tags:
+          type: array
+          items:
+            type: string
+          example: [纯种, 健康认证]
+        health_info:
+          type: object
+          properties:
+            vaccinated:
+              type: boolean
+            dewormed:
+              type: boolean
+            neutered:
+              type: boolean
+            health_certificate:
+              type: string
+        location:
+          type: string
+          example: 广东省深圳市
+        delivery_options:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [available, pending, sold, off_shelf]
+        seller:
+          $ref: "#/components/schemas/UserProfile"
+        view_count:
+          type: integer
+          example: 1256
+        favorite_count:
+          type: integer
+          example: 89
+        average_rating:
+          type: number
+          format: float
+          example: 4.8
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          example: ORD-20250208120000-A1B2C3
+        pet:
+          $ref: "#/components/schemas/Pet"
+        buyer:
+          $ref: "#/components/schemas/UserProfile"
+        status:
+          type: string
+          enum:
+            - pending_payment
+            - paid
+            - shipping
+            - delivered
+            - completed
+            - cancelled
+            - refunding
+            - refunded
+        delivery_method:
+          type: string
+        shipping_address:
+          type: object
+          properties:
+            receiver_name:
+              type: string
+            phone:
+              type: string
+            full_address:
+              type: string
+        amount:
+          type: number
+          example: 3500.00
+        shipping_fee:
+          type: number
+          example: 200.00
+        insurance_fee:
+          type: number
+          example: 50.00
+        discount_amount:
+          type: number
+          example: 100.00
+        total_amount:
+          type: number
+          example: 3650.00
+        coupon_code:
+          type: string
+        buyer_message:
+          type: string
+        payment_deadline:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+        shipped_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 501
+        user:
+          type: object
+          properties:
+            id:
+              type: integer
+            nickname:
+              type: string
+              example: 匿名用户
+            avatar_url:
+              type: string
+              format: uri
+        order_id:
+          type: string
+        rating:
+          type: integer
+          example: 5
+        content:
+          type: string
+          example: 非常健康活泼的小金毛，卖家很耐心地解答了所有问题
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        tags:
+          type: array
+          items:
+            type: string
+          example: [健康活泼, 与描述一致]
+        is_anonymous:
+          type: boolean
+        helpful_count:
+          type: integer
+          example: 12
+        seller_reply:
+          type: object
+          nullable: true
+          properties:
+            content:
+              type: string
+            replied_at:
+              type: string
+              format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        page_size:
+          type: integer
+          example: 20
+        total_items:
+          type: integer
+          example: 156
+        total_pages:
+          type: integer
+          example: 8
+        has_next:
+          type: boolean
+          example: true
+        has_previous:
+          type: boolean
+          example: false
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 40001
+        message:
+          type: string
+          example: 操作失败
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+  responses:
+    Unauthorized:
+      description: 未认证 — 缺少或无效的访问令牌
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    Forbidden:
+      description: 无权限 — 无权执行此操作
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    ValidationError:
+      description: 请求参数验证失败
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    TooManyRequests:
+      description: 请求频率超限（限流）
+      headers:
+        X-RateLimit-Limit:
+          description: 时间窗口内允许的最大请求数
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          description: 当前时间窗口内剩余请求数
+          schema:
+            type: integer
+        Retry-After:
+          description: 重试等待时间（秒）
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

@@ -1,0 +1,39 @@
+# 环境配置示例
+version: '1.0'
+type: 'environments'
+environments:
+  test:
+    name: 测试环境
+    base_url: http://test-api.example.com
+    description: 用于日常开发和测试
+    config:
+      timeout: 30
+      max_retries: 3
+      verify_ssl: false
+      default_headers:
+        Content-Type: application/json
+        X-Client: TestMaster
+      
+  staging:
+    name: 预发布环境
+    base_url: http://staging-api.example.com
+    description: 上线前的最终验证环境
+    config:
+      timeout: 30
+      max_retries: 2
+      verify_ssl: true
+      default_headers:
+        Content-Type: application/json
+        X-Client: TestMaster
+      
+  prod:
+    name: 生产环境
+    base_url: https://api.example.com
+    description: 生产环境（谨慎操作，仅冒烟测试）
+    config:
+      timeout: 60
+      max_retries: 3
+      verify_ssl: true
+      default_headers:
+        Content-Type: application/json
+        X-Client: TestMaster

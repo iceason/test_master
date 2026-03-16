@@ -1,0 +1,497 @@
+[
+  {
+    "ID": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_1550",
+    "Field": "username",
+    "Input payload": "TjtFw8TPCW",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid basic value (string)",
+    "CreatedAt": "2010-07-25T00:43:35.934771"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_5674",
+    "Field": "username",
+    "Input payload": "cody87",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid semantic/realistic value",
+    "CreatedAt": "1993-07-08T00:09:05.349858"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_8825",
+    "Field": "username",
+    "Input payload": "e3OLsis",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Max length valid string (20 chars)",
+    "CreatedAt": "2011-04-03T21:18:35.560277"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_POSITIVE_SUCCESS_6321",
+    "Field": "username",
+    "Input payload": "qd0Eq",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Min length valid string (5 chars)",
+    "CreatedAt": "1970-07-16T10:49:05.986266"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_1398",
+    "Field": "username",
+    "Input payload": null,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Missing required field",
+    "CreatedAt": "1973-05-15T17:23:57.042184"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_7107",
+    "Field": "username",
+    "Input payload": "1a1EjOYia2*",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Regex pattern mismatch",
+    "CreatedAt": "1988-12-15T16:46:17.726409"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_2309",
+    "Field": "username",
+    "Input payload": 123,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string, got int)",
+    "CreatedAt": "1998-05-09T18:03:44.320654"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_4629",
+    "Field": "username",
+    "Input payload": 123.45,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string, got float)",
+    "CreatedAt": "2019-06-21T04:36:23.116250"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_6053",
+    "Field": "username",
+    "Input payload": true,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string, got bool)",
+    "CreatedAt": "2019-02-26T21:39:40.606585"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_8514",
+    "Field": "username",
+    "Input payload": "admin",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Reserved word: admin",
+    "CreatedAt": "1989-05-23T19:02:03.244742"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_NEGATIVE_FAILURE_4758",
+    "Field": "username",
+    "Input payload": "root",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Reserved word: root",
+    "CreatedAt": "2024-03-09T20:26:40.066371"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_BOUNDARY_SUCCESS_1850",
+    "Field": "username",
+    "Input payload": "XKgn0SBMo5r",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "String at max length (20)",
+    "CreatedAt": "2017-04-15T16:53:12.143557"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_3193",
+    "Field": "username",
+    "Input payload": "OLqHXhjv",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "String exceeds max length (21 > 20)",
+    "CreatedAt": "1990-02-23T16:16:38.726431"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_BOUNDARY_SUCCESS_9021",
+    "Field": "username",
+    "Input payload": "X0000",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "String at min length (5)",
+    "CreatedAt": "2025-10-23T05:27:01.702579"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_7047",
+    "Field": "username",
+    "Input payload": "XMR9",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "String below min length (4 < 5)",
+    "CreatedAt": "2004-07-18T07:10:02.140107"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_2921",
+    "Field": "username",
+    "Input payload": null,
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Null value",
+    "CreatedAt": "1998-05-29T07:50:52.691589"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_BOUNDARY_FAILURE_4318",
+    "Field": "username",
+    "Input payload": "",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Empty string",
+    "CreatedAt": "2023-09-06T14:40:18.844604"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_5759",
+    "Field": "username",
+    "Input payload": "' OR '1'='1",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection attempt",
+    "CreatedAt": "2018-05-10T22:37:01.253115"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_7080",
+    "Field": "username",
+    "Input payload": "1; DROP TABLE users",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection attempt",
+    "CreatedAt": "2008-05-06T02:27:00.267678"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_6993",
+    "Field": "username",
+    "Input payload": "<script>alert(1)</script>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS attempt",
+    "CreatedAt": "2000-12-17T16:58:57.052455"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_3168",
+    "Field": "username",
+    "Input payload": "<img src=x onerror=alert(1)>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS attempt",
+    "CreatedAt": "1997-08-25T21:16:50.652238"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_1988",
+    "Field": "username",
+    "Input payload": "; ls -la",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection attempt",
+    "CreatedAt": "1991-11-25T18:13:02.271096"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_7519",
+    "Field": "username",
+    "Input payload": "| cat /etc/passwd",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection attempt",
+    "CreatedAt": "2024-06-27T09:00:04.544331"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_6697",
+    "Field": "username",
+    "Input payload": "{\"$ne\": null}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "JSON Injection attempt",
+    "CreatedAt": "1984-06-30T02:29:51.059562"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_5560",
+    "Field": "username",
+    "Input payload": "{\"key\": \"value\", \"inject\": true}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "JSON Injection attempt",
+    "CreatedAt": "2014-10-24T07:41:05.264805"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_2306",
+    "Field": "username",
+    "Input payload": "{\"$gt\": \"\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "NoSQL Injection attempt",
+    "CreatedAt": "1994-10-22T06:58:56.043112"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_2570",
+    "Field": "username",
+    "Input payload": "{\"$where\": \"1==1\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "NoSQL Injection attempt",
+    "CreatedAt": "2001-01-04T06:16:46.830405"
+  },
+  {
+    "ID": "USER_CREATE_USERNAME_SECURITY_FAILURE_6288",
+    "Field": "username",
+    "Input payload": "×U\u001b¾\u000f`",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Fuzzing attempt",
+    "CreatedAt": "2005-03-19T16:55:12.399750"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_POSITIVE_SUCCESS_9323",
+    "Field": "password",
+    "Input payload": "Aa0@000000",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid basic value (string)",
+    "CreatedAt": "1983-09-13T21:39:31.446582"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_POSITIVE_SUCCESS_2003",
+    "Field": "password",
+    "Input payload": "O!2jxnYjz2(x",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Valid semantic/realistic value",
+    "CreatedAt": "2012-04-03T08:20:03.437424"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_POSITIVE_SUCCESS_2783",
+    "Field": "password",
+    "Input payload": "Oj\u00171*sD-\t¯@ a򔣊Gia򳅁􁙘",
+    "POS/NEG": "Positive",
+    "Expected": "Success",
+    "Reason": "Max length valid string (100 chars)",
+    "CreatedAt": "2022-08-31T03:31:24.248908"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_4743",
+    "Field": "password",
+    "Input payload": null,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Missing required field",
+    "CreatedAt": "2008-08-12T02:16:17.561844"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_7757",
+    "Field": "password",
+    "Input payload": "fHj8QJPoWu$",
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Regex pattern mismatch",
+    "CreatedAt": "2017-04-18T08:32:41.499201"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_1537",
+    "Field": "password",
+    "Input payload": 123,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string, got int)",
+    "CreatedAt": "2012-02-09T20:39:56.252864"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_6320",
+    "Field": "password",
+    "Input payload": 123.45,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string, got float)",
+    "CreatedAt": "1988-02-22T14:25:15.262331"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_NEGATIVE_FAILURE_4906",
+    "Field": "password",
+    "Input payload": true,
+    "POS/NEG": "Negative",
+    "Expected": "Failure",
+    "Reason": "Type error (expected string, got bool)",
+    "CreatedAt": "1973-12-25T09:24:02.037247"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_SUCCESS_8646",
+    "Field": "password",
+    "Input payload": "0Aa0@00000000",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "String at max length (100)",
+    "CreatedAt": "2021-09-05T01:42:50.598126"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_2573",
+    "Field": "password",
+    "Input payload": "Xì^dØ𝟧$.(fwÒ0󣢎",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "String exceeds max length (101 > 100)",
+    "CreatedAt": "2010-08-27T18:24:29.846411"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_2513",
+    "Field": "password",
+    "Input payload": null,
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Null value",
+    "CreatedAt": "1989-01-18T01:15:09.827589"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_SUCCESS_6252",
+    "Field": "password",
+    "Input payload": "",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "Empty string",
+    "CreatedAt": "1972-06-19T05:34:25.028805"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_SUCCESS_8464",
+    "Field": "password",
+    "Input payload": "0L¡né႔^𬌵&^",
+    "POS/NEG": "Boundary",
+    "Expected": "Success",
+    "Reason": "Valid special character: '^'",
+    "CreatedAt": "1986-02-27T16:47:28.797717"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_3028",
+    "Field": "password",
+    "Input payload": "󛞹,H>!n񈝯 ౯]",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Illegal special character: ']'",
+    "CreatedAt": "1980-12-16T18:27:56.360438"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_4612",
+    "Field": "password",
+    "Input payload": "I®s٢񿤾]f#[",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Illegal special character: '['",
+    "CreatedAt": "2013-08-18T04:11:45.190930"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_BOUNDARY_FAILURE_3433",
+    "Field": "password",
+    "Input payload": "Oûv๑%򵷙Ì😍{",
+    "POS/NEG": "Boundary",
+    "Expected": "Failure",
+    "Reason": "Illegal special character: '{'",
+    "CreatedAt": "2008-07-17T04:56:58.405224"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_4971",
+    "Field": "password",
+    "Input payload": "' OR '1'='1",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection attempt",
+    "CreatedAt": "1996-11-19T12:10:28.122870"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_3422",
+    "Field": "password",
+    "Input payload": "1; DROP TABLE users",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "SQL Injection attempt",
+    "CreatedAt": "1992-01-10T21:15:50.400792"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_8796",
+    "Field": "password",
+    "Input payload": "<script>alert(1)</script>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS attempt",
+    "CreatedAt": "2024-03-23T07:21:58.818806"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_1543",
+    "Field": "password",
+    "Input payload": "<img src=x onerror=alert(1)>",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "XSS attempt",
+    "CreatedAt": "2000-02-17T11:17:34.364959"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_8567",
+    "Field": "password",
+    "Input payload": "; ls -la",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection attempt",
+    "CreatedAt": "1982-05-22T01:52:01.969328"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_3874",
+    "Field": "password",
+    "Input payload": "| cat /etc/passwd",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Command Injection attempt",
+    "CreatedAt": "1989-04-24T19:43:04.508401"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_8518",
+    "Field": "password",
+    "Input payload": "{\"$ne\": null}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "JSON Injection attempt",
+    "CreatedAt": "2012-08-06T03:19:32.771196"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_5227",
+    "Field": "password",
+    "Input payload": "{\"key\": \"value\", \"inject\": true}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "JSON Injection attempt",
+    "CreatedAt": "1977-06-30T23:42:51.671076"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_5119",
+    "Field": "password",
+    "Input payload": "{\"$gt\": \"\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "NoSQL Injection attempt",
+    "CreatedAt": "1982-10-05T20:57:39.938465"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_4494",
+    "Field": "password",
+    "Input payload": "{\"$where\": \"1==1\"}",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "NoSQL Injection attempt",
+    "CreatedAt": "1976-02-04T02:49:13.061998"
+  },
+  {
+    "ID": "USER_CREATE_PASSWORD_SECURITY_FAILURE_7355",
+    "Field": "password",
+    "Input payload": "×U\u001b¾\u000f`",
+    "POS/NEG": "Security",
+    "Expected": "Failure",
+    "Reason": "Fuzzing attempt",
+    "CreatedAt": "2025-01-06T18:40:11.915441"
+  }
+]

@@ -1,0 +1,429 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoTest Platform</title>
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Element Plus -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <script src="https://unpkg.com/element-plus"></script>
+    <!-- Icons -->
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif; }
+        #app { height: 100%; width: 100%; }
+        
+        .el-header {
+            background-color: #fff;
+            border-bottom: 1px solid #dcdfe6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        .el-aside {
+            background-color: #fff;
+            border-right: 1px solid #dcdfe6;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .el-main {
+            background-color: #f5f7fa;
+            padding: 20px;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .brand {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #409EFF;
+            border-bottom: 1px solid #dcdfe6;
+        }
+        
+        .sidebar-menu {
+            border-right: none;
+        }
+        
+        /* Tree Node Customization */
+        .custom-tree-node {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            padding-right: 8px;
+        }
+        
+        .tree-actions {
+            display: none;
+        }
+        
+        .custom-tree-node:hover .tree-actions {
+            display: inline-block;
+        }
+        
+        .tree-actions .el-button {
+            padding: 2px;
+            min-height: auto;
+        }
+
+        /* Utilities */
+        .full-height { height: 100%; }
+        .flex-col { display: flex; flex-direction: column; }
+        .flex-1 { flex: 1; }
+    </style>
+</head>
+<body>
+    <div class="hidden" style="display:none;">{% csrf_token %}</div>
+    
+    {% verbatim %}
+    <div id="app">
+        <el-container class="full-height">
+            <!-- Sidebar -->
+            <el-aside width="250px">
+                <div class="brand">
+                    <el-icon class="mr-2"><element-plus /></el-icon> AutoTest
+                </div>
+                
+                <el-scrollbar>
+                    <el-menu :default-active="activeMenu" class="sidebar-menu" @select="handleMenuSelect">
+                        <el-sub-menu index="interface-manage">
+                            <template #title>
+                                <el-icon><folder /></el-icon>
+                                <span>接口管理</span>
+                            </template>
+                            
+                            <!-- Tree inside Menu -->
+                            <el-tree
+                                ref="treeRef"
+                                node-key="id"
+                                :props="treeProps"
+                                :load="loadNode"
+                                lazy
+                                highlight-current
+                                :expand-on-click-node="false"
+                                @node-click="handleNodeClick"
+                                style="padding: 10px;"
+                            >
+                                <template #default="{ node, data }">
+                                    <span class="custom-tree-node">
+                                        <span>
+                                            <el-tag v-if="data.type === 'interface'" size="small" :type="getMethodType(data.method)" style="margin-right: 5px;">{{ data.method }}</el-tag>
+                                            <el-icon v-else style="margin-right: 5px; color: #E6A23C;"><folder /></el-icon>
+                                            {{ node.label }}
+                                        </span>
+                                        <span v-if="data.type === 'directory'" class="tree-actions">
+                                            <el-button link type="primary" @click.stop="openInterfaceDialog(data.id)"><el-icon><plus /></el-icon></el-button>
+                                            <el-button link type="warning" @click.stop="openDirectoryDialog(data)"><el-icon><edit /></el-icon></el-button>
+                                            <el-button link type="danger" @click.stop="confirmDelete('directory', data.id)"><el-icon><delete /></el-icon></el-button>
+                                        </span>
+                                    </span>
+                                </template>
+                            </el-tree>
+                            
+                            <div style="padding: 10px; text-align: center;">
+                                <el-button type="primary" plain size="small" style="width: 100%;" @click="openDirectoryDialog()">
+                                    <el-icon><folder-add /></el-icon> 新建目录
+                                </el-button>
+                            </div>
+                        </el-sub-menu>
+                        
+                        <el-menu-item index="testcase-manage">
+                            <el-icon><list /></el-icon>
+                            <span>用例列表</span>
+                        </el-menu-item>
+                    </el-menu>
+                </el-scrollbar>
+            </el-aside>
+
+            <el-container class="flex-col overflow-hidden">
+                <!-- Header -->
+                <el-header>
+                    <div class="flex items-center">
+                        <!-- Dynamic Title -->
+                        <template v-if="currentView === 'interface' && currentInterface">
+                            <el-tag :type="getMethodType(currentInterface.method)" effect="dark" class="mr-2">{{ currentInterface.method }}</el-tag>
+                            <span style="font-weight: bold; font-size: 16px;">{{ currentInterface.name }}</span>
+                            <span style="color: #909399; margin-left: 10px; font-size: 12px;">{{ currentInterface.path }}</span>
+                        </template>
+                        <template v-else-if="currentView === 'testcase' && currentTestCase">
+                            <el-button link icon="Back" @click="backToInterface" class="mr-2">返回</el-button>
+                            <span style="font-weight: bold; font-size: 16px;">{{ currentTestCase.name }}</span>
+                        </template>
+                        <template v-else>
+                            <span style="font-weight: bold; font-size: 16px;">用例管理中心</span>
+                        </template>
+                    </div>
+                    
+                    <!-- Global Actions -->
+                    <div>
+                        <template v-if="currentView === 'testcase-manage'">
+                            <el-input v-model="searchKeyword" placeholder="搜索用例..." prefix-icon="Search" style="width: 200px; margin-right: 10px;" clearable @input="handleSearch" />
+                            <el-button type="primary" plain @click="handleBatchExport">导出</el-button>
+                            <el-button type="danger" plain @click="handleBatchDelete">删除</el-button>
+                        </template>
+                        <template v-if="currentView === 'interface' && currentInterface">
+                            <el-button type="primary" @click="openGenerateDialog">AI 生成用例</el-button>
+                            <el-button icon="Edit" circle @click="openInterfaceDialog(null, currentInterface)"></el-button>
+                            <el-button type="danger" icon="Delete" circle plain @click="confirmDelete('interface', currentInterface.id)"></el-button>
+                        </template>
+                        <template v-if="currentView === 'testcase' && currentTestCase">
+                            <el-button type="primary" @click="openTestCaseDialog(currentTestCase)">编辑</el-button>
+                            <el-button type="danger" plain @click="confirmDelete('testcase', currentTestCase.id)">删除</el-button>
+                        </template>
+                    </div>
+                </el-header>
+
+                <!-- Main Content -->
+                <el-main>
+                    <!-- Interface View -->
+                    <div v-if="currentView === 'interface' && currentInterface" class="flex-col full-height">
+                        <el-collapse v-model="activeCollapse" style="margin-bottom: 20px;">
+                            <el-collapse-item title="Schema 定义" name="schema">
+                                <el-input type="textarea" :model-value="JSON.stringify(currentInterface.schema, null, 2)" :rows="5" readonly />
+                            </el-collapse-item>
+                        </el-collapse>
+                        
+                        <el-card shadow="never" class="flex-1 flex-col" :body-style="{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }">
+                            <template #header>
+                                <div class="flex justify-between items-center">
+                                    <span>测试用例列表</span>
+                                </div>
+                            </template>
+                            <el-table :data="testCases" style="width: 100%; height: 100%;" stripe border @selection-change="handleSelectionChange">
+                                <el-table-column type="selection" width="55" align="center"></el-table-column>
+                                <el-table-column prop="id" label="ID" width="80" align="center" sortable></el-table-column>
+                                <el-table-column prop="name" label="用例名称" min-width="200">
+                                    <template #default="{ row }">
+                                        <el-link type="primary" @click="viewTestCase(row)">{{ row.name }}</el-link>
+                                    </template>
+                                </el-table-column>
+                                <el-table-column prop="category_name" label="分类" width="120" align="center">
+                                    <template #default="{ row }"><el-tag size="small">{{ row.category_name || '-' }}</el-tag></template>
+                                </el-table-column>
+                                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip></el-table-column>
+                                <el-table-column label="操作" width="120" align="center">
+                                    <template #default="{ row }">
+                                        <el-button link type="primary" icon="Edit" @click="openTestCaseDialog(row)"></el-button>
+                                        <el-button link type="danger" icon="Delete" @click="confirmDelete('testcase', row.id)"></el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-card>
+                    </div>
+
+                    <!-- Test Case Detail View -->
+                    <div v-else-if="currentView === 'testcase' && currentTestCase" class="flex-col full-height">
+                        <el-descriptions border :column="2" class="mb-4">
+                            <el-descriptions-item label="用例名称">{{ currentTestCase.name }}</el-descriptions-item>
+                            <el-descriptions-item label="测试字段">{{ currentTestCase.test_field || 'Global' }}</el-descriptions-item>
+                            <el-descriptions-item label="描述" :span="2">{{ currentTestCase.description }}</el-descriptions-item>
+                        </el-descriptions>
+                        
+                        <el-row :gutter="20" class="flex-1" style="overflow: hidden;">
+                            <el-col :span="12" class="full-height flex-col">
+                                <el-card shadow="never" class="full-height flex-col" :body-style="{ flex: 1, display: 'flex', flexDirection: 'column' }">
+                                    <template #header>请求数据 (Request)</template>
+                                    <el-input type="textarea" :model-value="JSON.stringify(currentTestCase.request_data, null, 2)" class="full-height" resize="none" readonly />
+                                </el-card>
+                            </el-col>
+                            <el-col :span="12" class="full-height flex-col">
+                                <el-card shadow="never" class="full-height flex-col" :body-style="{ flex: 1, display: 'flex', flexDirection: 'column' }">
+                                    <template #header>期望结果 (Expected)</template>
+                                    <el-input type="textarea" :model-value="JSON.stringify(currentTestCase.expected_value || currentTestCase.expected_response, null, 2)" class="full-height" resize="none" readonly />
+                                </el-card>
+                            </el-col>
+                        </el-row>
+                    </div>
+
+                    <!-- Test Case Manager View -->
+                    <div v-else-if="currentView === 'testcase-manage'" class="full-height">
+                        <el-card shadow="never" class="full-height flex-col" :body-style="{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }">
+                            <el-table :data="globalTestCases" style="width: 100%; height: 100%;" stripe border @selection-change="handleSelectionChange">
+                                <el-table-column type="selection" width="55" align="center"></el-table-column>
+                                <el-table-column prop="id" label="ID" width="80" align="center" sortable></el-table-column>
+                                <el-table-column prop="name" label="用例名称" min-width="200" show-overflow-tooltip></el-table-column>
+                                <el-table-column prop="interface" label="接口ID" width="100" align="center"></el-table-column>
+                                <el-table-column prop="test_field" label="测试字段" width="150"></el-table-column>
+                                <el-table-column prop="category_name" label="分类" width="120" align="center"></el-table-column>
+                                <el-table-column label="操作" width="120" align="center">
+                                    <template #default="{ row }">
+                                        <el-button link type="primary" icon="Edit" @click="openTestCaseDialog(row)"></el-button>
+                                        <el-button link type="danger" icon="Delete" @click="confirmDelete('testcase', row.id)"></el-button>
+                                    </template>
+                                </el-table-column>
+                            </el-table>
+                        </el-card>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div v-else class="full-height flex items-center justify-center" style="display: flex; align-items: center; justify-content: center;">
+                        <el-empty description="请选择左侧接口或目录"></el-empty>
+                    </div>
+                </el-main>
+            </el-container>
+        </el-container>
+
+        <!-- Dialogs -->
+        
+        <!-- Directory Dialog -->
+        <el-dialog v-model="dialogs.directory.visible" :title="dialogs.directory.isEdit ? '编辑目录' : '新建目录'" width="500px">
+            <el-card shadow="never">
+                <el-form :model="dialogs.directory.form" label-position="right" label-width="120px" @submit.prevent>
+                    <el-form-item label="目录名称">
+                        <el-input v-model="dialogs.directory.form.name" autocomplete="off" placeholder="请输入目录名称" />
+                    </el-form-item>
+                </el-form>
+            </el-card>
+            <template #footer>
+                <div style="text-align: center;">
+                    <el-button @click="dialogs.directory.visible = false">取消</el-button>
+                    <el-button type="primary" @click="submitDirectory">确定</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <!-- Interface Dialog -->
+        <el-dialog v-model="dialogs.interface.visible" :title="dialogs.interface.isEdit ? '编辑接口' : '新建接口'" width="700px">
+            <el-card shadow="never">
+                <el-form :model="dialogs.interface.form" label-position="right" label-width="120px" @submit.prevent>
+                    <el-form-item label="接口名称">
+                        <el-input v-model="dialogs.interface.form.name" placeholder="例如：获取用户信息" />
+                    </el-form-item>
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="Method">
+                                <el-select v-model="dialogs.interface.form.method" style="width: 100%">
+                                    <el-option value="GET" label="GET" />
+                                    <el-option value="POST" label="POST" />
+                                    <el-option value="PUT" label="PUT" />
+                                    <el-option value="DELETE" label="DELETE" />
+                                </el-select>
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="Path">
+                                <el-input v-model="dialogs.interface.form.path" placeholder="/api/v1/resource" />
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-form-item label="Schema">
+                        <el-input v-model="dialogs.interface.form.schemaStr" type="textarea" :rows="6" placeholder='{"type": "object", ...}' style="font-family: monospace;" />
+                    </el-form-item>
+                </el-form>
+            </el-card>
+            <template #footer>
+                <div style="text-align: center;">
+                    <el-button @click="dialogs.interface.visible = false">取消</el-button>
+                    <el-button type="primary" @click="submitInterface">保存</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <!-- Generate Dialog -->
+        <el-dialog v-model="dialogs.generate.visible" title="AI 生成用例" width="600px">
+            <el-card shadow="never">
+                <el-form label-position="top" label-width="120px" @submit.prevent>
+                     <div style="height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #dcdfe6; border-radius: 4px; margin-bottom: 20px;">
+                        <div v-for="cat in categories" :key="cat.id" style="margin-bottom: 15px;">
+                            <div style="font-weight: bold; border-bottom: 1px solid #ebeef5; margin-bottom: 5px;">{{ cat.name }}</div>
+                            <el-checkbox-group v-model="dialogs.generate.selectedIds">
+                                <el-row>
+                                    <el-col :span="12" v-for="sub in cat.sub_categories" :key="sub.id">
+                                        <el-checkbox :label="sub.id" style="width: 100%; overflow: hidden; text-overflow: ellipsis;">{{ sub.name }}</el-checkbox>
+                                    </el-col>
+                                </el-row>
+                            </el-checkbox-group>
+                        </div>
+                    </div>
+                </el-form>
+            </el-card>
+            <template #footer>
+                <div style="text-align: center;">
+                    <el-button @click="dialogs.generate.visible = false">取消</el-button>
+                    <el-button type="primary" :loading="dialogs.generate.submitting" @click="submitGenerate">生成</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <!-- Test Case Dialog -->
+        <el-dialog v-model="dialogs.testcase.visible" title="编辑用例" width="900px" top="5vh">
+            <el-card shadow="never">
+                <el-form :model="dialogs.testcase.form" label-position="right" label-width="120px" @submit.prevent>
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="名称">
+                                <el-input v-model="dialogs.testcase.form.name" />
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="测试字段">
+                                <el-input v-model="dialogs.testcase.form.test_field" />
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                    <el-form-item label="描述">
+                        <el-input v-model="dialogs.testcase.form.description" type="textarea" :rows="2" />
+                    </el-form-item>
+                    <el-row :gutter="20">
+                        <el-col :span="12">
+                            <el-form-item label="请求数据">
+                                <el-input v-model="dialogs.testcase.form.requestDataStr" type="textarea" :rows="10" style="font-family: monospace;" placeholder="JSON Format" />
+                            </el-form-item>
+                        </el-col>
+                        <el-col :span="12">
+                            <el-form-item label="期望结果">
+                                <el-input v-model="dialogs.testcase.form.expectedValueStr" type="textarea" :rows="10" style="font-family: monospace;" placeholder="JSON Format" />
+                            </el-form-item>
+                        </el-col>
+                    </el-row>
+                </el-form>
+            </el-card>
+            <template #footer>
+                <div style="text-align: center;">
+                    <el-button @click="dialogs.testcase.visible = false">取消</el-button>
+                    <el-button type="primary" @click="submitTestCase">保存</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <!-- Export Dialog -->
+        <el-dialog v-model="dialogs.export.visible" title="导出" width="400px">
+            <el-card shadow="never">
+                <el-form label-position="right" label-width="100px" @submit.prevent>
+                    <el-form-item label="格式">
+                        <el-radio-group v-model="dialogs.export.format">
+                            <el-radio label="json">JSON</el-radio>
+                            <el-radio label="yaml">YAML</el-radio>
+                            <el-radio label="csv">CSV</el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                </el-form>
+            </el-card>
+            <template #footer>
+                <div style="text-align: center;">
+                    <el-button @click="dialogs.export.visible = false">取消</el-button>
+                    <el-button type="primary" @click="submitExport">导出</el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+    </div>
+    {% endverbatim %}
+
+    <script src="/static/js/app.js?v=standard_final"></script>
+</body>
+</html>

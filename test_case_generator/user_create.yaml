@@ -1,0 +1,12 @@
+username:
+  type: string
+  required: true
+  min_length: 4
+  max_length: 16
+  regex: "^[a-zA-Z][a-zA-Z0-9_]{3,15}$"
+  reserved_words: ["admin", "root"]
+
+password:
+  type: string
+  required: true
+  regex: "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*!@#$%^&*).{8,20}$"

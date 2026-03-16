@@ -1,0 +1,153 @@
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-size: 14px; /* Base font size reduction */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Scrollbar styling - Light mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Scrollbar styling - Dark mode */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== Layout Containers ===== */
+.container-1400 {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.container-1200 {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.container-960 {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ===== Gap Utilities ===== */
+.gap-1 { gap: 4px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.gap-6 { gap: 24px; }
+.gap-8 { gap: 32px; }
+
+/* ===== Border Utilities ===== */
+.border-e { border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important; }
+.border-b { border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important; }
+.border-s { border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important; }
+.border-t { border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important; }
+.border-thin { border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important; }
+.border-opacity-12 { --v-border-opacity: 0.12 !important; }
+
+/* ===== Typography Utilities ===== */
+.text-caption-sm {
+  font-size: 0.6875rem !important;  /* 11px */
+  line-height: 1.25rem;
+}
+.text-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+}
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.text-truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===== Card Variant Utilities ===== */
+.card-outlined {
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)) !important;
+  box-shadow: none !important;
+}
+.card-flat {
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* ===== Status Colors ===== */
+.status-success { color: rgb(var(--v-theme-success)); }
+.status-error { color: rgb(var(--v-theme-error)); }
+.status-warning { color: rgb(var(--v-theme-warning)); }
+.status-info { color: rgb(var(--v-theme-info)); }
+
+/* ===== Interactive Utilities ===== */
+.clickable {
+  cursor: pointer;
+  user-select: none;
+}
+.clickable:hover {
+  opacity: 0.85;
+}
+
+/* ===== Toolbar/Action Bar pattern ===== */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ===== Theme Variables ===== */
+:root {
+  --v-border-color: 0, 0, 0;
+  --v-border-opacity: 0.08;
+  --app-sidebar-width: 260px;
+  --app-header-height: 48px;
+}
+
+[data-theme="dark"] {
+  --v-border-color: 255, 255, 255;
+  --v-border-opacity: 0.12;
+}
+
+/* ===== Smooth transitions for theme changes ===== */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ===== Fix Vuetify v-data-table header z-index for sticky headers ===== */
+.v-data-table .v-data-table__th {
+  white-space: nowrap;
+}
+
+/* ===== Elevation Override for Dark Mode ===== */
+.v-theme--dark .v-card--variant-elevated {
+  background-color: rgb(var(--v-theme-surface));
+}
