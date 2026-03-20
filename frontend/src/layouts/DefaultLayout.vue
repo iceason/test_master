@@ -64,6 +64,37 @@
               <v-list-item-title class="font-weight-medium">{{ $t(sub.title) }}</v-list-item-title>
             </v-list-item>
           </v-list-group>
+
+          <!-- Settings group -->
+          <v-list-group value="settings">
+            <template v-slot:activator="{ props }">
+              <v-list-item
+                v-bind="props"
+                rounded="xl"
+                class="mb-1"
+              >
+                <template v-slot:prepend>
+                  <v-icon icon="mdi-cog-outline" class="mr-2"></v-icon>
+                </template>
+                <v-list-item-title class="font-weight-medium">{{ $t('common.systemSettings') }}</v-list-item-title>
+              </v-list-item>
+            </template>
+            <v-list-item
+              v-for="sub in settingsSubItems"
+              :key="sub.value"
+              :value="sub.value"
+              :to="sub.to"
+              rounded="xl"
+              color="primary"
+              class="mb-1"
+              :active-class="'bg-primary-container text-on-primary-container'"
+            >
+              <template v-slot:prepend>
+                <v-icon :icon="sub.icon" class="mr-2"></v-icon>
+              </template>
+              <v-list-item-title class="font-weight-medium">{{ $t(sub.title) }}</v-list-item-title>
+            </v-list-item>
+          </v-list-group>
         </v-list>
       </div>
 
@@ -207,6 +238,11 @@ const testingSubItems = [
   { title: 'common.buildPlans', icon: 'mdi-clipboard-flow-outline', value: 'buildPlans', to: '/testing/plans' },
 ]
 
+const settingsSubItems = [
+  { title: 'common.environments', icon: 'mdi-earth', value: 'environments', to: '/settings/environments' },
+  { title: 'common.emailTemplates', icon: 'mdi-email-newsletter', value: 'emailTemplates', to: '/settings/email-templates' },
+]
+
 const routeNameToI18nKey: Record<string, string> = {
   Dashboard: 'common.dashboard',
   Interfaces: 'common.interfaces',
@@ -217,6 +253,8 @@ const routeNameToI18nKey: Record<string, string> = {
   BuildPlanDetail: 'common.buildPlans',
   Execution: 'execution.title',
   Profile: 'common.profile',
+  EmailTemplates: 'common.emailTemplates',
+  Environments: 'common.environments',
 }
 
 const currentRouteName = computed(() => {

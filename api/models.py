@@ -129,11 +129,13 @@ class Environment(models.Model):
     name = models.CharField(max_length=50, unique=True, verbose_name="环境名称")
     code = models.CharField(max_length=20, unique=True, verbose_name="环境代码")
     base_url = models.URLField(verbose_name="基础URL")
+    token = models.CharField(max_length=500, blank=True, default='', verbose_name="Token")
     description = models.TextField(blank=True, verbose_name="描述")
     config = models.JSONField(default=dict, blank=True, verbose_name="环境配置")
     is_active = models.BooleanField(default=True, verbose_name="是否启用")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
-    
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
     class Meta:
         verbose_name = "测试环境"
         verbose_name_plural = verbose_name
@@ -290,6 +292,9 @@ class ExecutorMachine(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='offline', verbose_name="状态")
     description = models.TextField(blank=True, verbose_name="描述")
     jenkins_node_name = models.CharField(max_length=255, blank=True, verbose_name="Jenkins 节点名")
+    jenkins_url = models.URLField(blank=True, verbose_name="Jenkins 服务器地址")
+    jenkins_username = models.CharField(max_length=255, blank=True, verbose_name="Jenkins 用户名")
+    jenkins_token = models.CharField(max_length=255, blank=True, verbose_name="Jenkins Token")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
 
@@ -320,17 +325,37 @@ class BuildPlan(models.Model):
         related_name='build_plans', verbose_name="执行环境"
     )
 
-    # Jenkins 配置
+    # Jenkins 配置（服务器地址和凭据已移至 ExecutorMachine）
     jenkins_job_name = models.CharField(max_length=255, blank=True, verbose_name="Jenkins Job 名称")
-    jenkins_server_url = models.URLField(blank=True, verbose_name="Jenkins 服务器地址")
-    jenkins_credentials = models.JSONField(
-        default=dict, blank=True, verbose_name="Jenkins 认证信息",
-        help_text='{"username": "...", "token": "..."}'
+
+    # 源码管理
+    git_repo_url = models.CharField(max_length=500, blank=True, verbose_name="Git 仓库地址")
+    git_branch = models.CharField(max_length=100, default='main', blank=True, verbose_name="Git 分支")
+    git_credential_id = models.CharField(
+        max_length=100, blank=True, default='',
+        verbose_name="Jenkins 凭证 ID",
+        help_text="Jenkins 中配置的 Credentials ID，如 github-user",
     )
+    workspace_cleanup = models.BooleanField(default=True, verbose_name="构建前清理工作空间")
+
+    # 报告配置
+    report_enabled = models.BooleanField(default=False, verbose_name="启用报告上传")
+    report_command = models.TextField(blank=True, verbose_name="报告生成命令")
 
     # 定时执行
     cron_expression = models.CharField(max_length=100, blank=True, verbose_name="Cron 表达式")
     is_cron_enabled = models.BooleanField(default=False, verbose_name="启用定时执行")
+
+    # 环境变量
+    environment_variables = models.JSONField(
+        default=list, blank=True, verbose_name="环境变量",
+        help_text='[{"key": "FOO", "value": "bar", "secret": false}, ...]'
+    )
+
+    # Jenkinsfile 原始文本（文本编辑模式时保存）
+    jenkinsfile_text = models.TextField(
+        blank=True, default='', verbose_name="Jenkinsfile 文本",
+    )
 
     # 通知配置
     notification_config = models.JSONField(
@@ -381,7 +406,7 @@ class BuildStep(models.Model):
     order = models.IntegerField(default=0, verbose_name="步骤序号")
     name = models.CharField(max_length=200, verbose_name="步骤名称")
     script = models.TextField(blank=True, verbose_name="执行脚本")
-    timeout = models.IntegerField(default=3600, verbose_name="超时秒数")
+    timeout = models.IntegerField(default=120, verbose_name="超时秒数")
     on_failure = models.CharField(max_length=20, choices=ON_FAILURE_CHOICES, default='stop', verbose_name="失败策略")
 
     class Meta:
@@ -468,3 +493,83 @@ class BuildExecution(models.Model):
             return f"{seconds:.1f}s"
         minutes = seconds / 60
         return f"{minutes:.1f}m"
+
+
+class EmailTemplate(models.Model):
+    """邮件通知模板"""
+    VARIABLE_HELP = (
+        ('plan_name', '构建计划名称'),
+        ('status', '构建状态(小写)'),
+        ('status_upper', '构建状态(大写)'),
+        ('status_emoji', '状态表情'),
+        ('trigger_type', '触发方式'),
+        ('triggered_by', '触发人'),
+        ('duration', '执行耗时'),
+        ('jenkins_url', 'Jenkins 构建链接'),
+        ('timestamp', '执行时间'),
+    )
+
+    name = models.CharField(max_length=100, verbose_name="模板名称")
+    subject = models.CharField(
+        max_length=255, verbose_name="邮件主题",
+        default="{{status_emoji}} [Test Master] {{plan_name}} - {{status_upper}}",
+    )
+    DEFAULT_BODY = (
+        "══════════════════════════════════════\n"
+        "  {{status_emoji}} 自动化测试执行报告\n"
+        "══════════════════════════════════════\n"
+        "\n"
+        "【基本信息】\n"
+        "  构建计划：{{plan_name}}\n"
+        "  执行结果：{{status_upper}}\n"
+        "  执行时间：{{timestamp}}\n"
+        "  执行耗时：{{duration}}\n"
+        "\n"
+        "【触发信息】\n"
+        "  触发方式：{{trigger_type}}\n"
+        "  触发人员：{{triggered_by}}\n"
+        "\n"
+        "【构建详情】\n"
+        "  Jenkins 链接：{{jenkins_url}}\n"
+        "  （点击上方链接可查看完整构建日志与测试产物）\n"
+        "\n"
+        "──────────────────────────────────────\n"
+        "  说明：\n"
+        "  · SUCCESS  — 所有测试步骤执行通过\n"
+        "  · FAILED   — 存在失败的测试步骤，请及时排查\n"
+        "  · CANCELLED — 构建被手动取消\n"
+        "──────────────────────────────────────\n"
+        "\n"
+        "此邮件由 Test Master 自动发送，请勿直接回复。\n"
+        "如有疑问请联系测试团队。\n"
+    )
+
+    body = models.TextField(
+        verbose_name="邮件正文",
+        default=DEFAULT_BODY,
+    )
+    is_default = models.BooleanField(default=False, verbose_name="默认模板")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "邮件模板"
+        verbose_name_plural = "邮件模板"
+        ordering = ['-is_default', '-updated_at']
+
+    def __str__(self):
+        return f"{self.name} {'(默认)' if self.is_default else ''}"
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            EmailTemplate.objects.filter(is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def render(self, context: dict) -> tuple:
+        subject = self.subject
+        body = self.body
+        for key, value in context.items():
+            placeholder = '{{' + key + '}}'
+            subject = subject.replace(placeholder, str(value))
+            body = body.replace(placeholder, str(value))
+        return subject, body

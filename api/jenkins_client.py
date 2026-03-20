@@ -20,11 +20,35 @@ class JenkinsClient:
                 "python-jenkins is required. Install with: pip install python-jenkins"
             )
         self.server_url = server_url.rstrip('/')
+        self._username = username
+        self._token = token
         self.server = jenkins.Jenkins(
             self.server_url,
             username=username,
             password=token,
         )
+        if username and token:
+            import requests as _req
+            auth = _req.auth.HTTPBasicAuth(username, token)
+            self.server._session.auth = auth
+            self.server.auth = auth
+            self.server._auth_resolved = True
+            self._prefetch_crumb(auth)
+
+    def _prefetch_crumb(self, auth):
+        """Pre-fetch CSRF crumb so python-jenkins never makes its own unauthenticated request."""
+        import requests as _req
+        try:
+            resp = _req.get(
+                f"{self.server_url}/crumbIssuer/api/json",
+                auth=auth, timeout=10,
+            )
+            if resp.status_code == 200:
+                self.server.crumb = resp.json()
+            else:
+                self.server.crumb = False
+        except Exception:
+            self.server.crumb = False
 
     # ------------------------------------------------------------------
     # Connection test
@@ -32,7 +56,13 @@ class JenkinsClient:
 
     def ping(self):
         """Return Jenkins version string or raise on failure."""
-        return self.server.get_version()
+        import requests as _requests
+        auth = (self._username, self._token) if self._username else None
+        resp = _requests.get(
+            self.server_url, auth=auth, timeout=10, allow_redirects=False,
+        )
+        resp.raise_for_status()
+        return resp.headers.get('X-Jenkins', 'unknown')
 
     # ------------------------------------------------------------------
     # Build operations
@@ -43,7 +73,8 @@ class JenkinsClient:
         Trigger a Jenkins job and return the queue item number.
         Returns queue_id (int).
         """
-        queue_id = self.server.build_job(job_name, parameters=parameters or {})
+        params = parameters if parameters else None
+        queue_id = self.server.build_job(job_name, parameters=params)
         logger.info("Triggered Jenkins job %s, queue_id=%s", job_name, queue_id)
         return queue_id
 
@@ -133,14 +164,349 @@ class JenkinsClient:
 
 def create_jenkins_client(build_plan):
     """
-    Factory: create a JenkinsClient from a BuildPlan instance.
-    Returns None if Jenkins is not configured.
+    Factory: create a JenkinsClient from a BuildPlan's executor_machine.
+    Returns None if Jenkins is not configured on the machine.
     """
-    if not build_plan.jenkins_server_url or not build_plan.jenkins_job_name:
+    machine = build_plan.executor_machine
+    if not machine or not machine.jenkins_url:
         return None
-    creds = build_plan.jenkins_credentials or {}
     return JenkinsClient(
-        server_url=build_plan.jenkins_server_url,
-        username=creds.get('username'),
-        token=creds.get('token'),
+        server_url=machine.jenkins_url,
+        username=machine.jenkins_username or None,
+        token=machine.jenkins_token or None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Pipeline script & config.xml generation
+# ---------------------------------------------------------------------------
+
+import xml.sax.saxutils as saxutils
+import re
+
+
+def _escape_groovy(text):
+    """Escape for Groovy single-quoted string."""
+    return text.replace('\\', '\\\\').replace("'", "\\'")
+
+
+def _escape_groovy_triple(text):
+    """Escape for Groovy triple-single-quoted string context."""
+    result = []
+    consecutive_quotes = 0
+    for ch in text:
+        if ch == '\\':
+            result.append('\\\\')
+            consecutive_quotes = 0
+        elif ch == "'":
+            consecutive_quotes += 1
+            if consecutive_quotes == 3:
+                result.append("\\'")
+                consecutive_quotes = 0
+            else:
+                result.append("'")
+        else:
+            consecutive_quotes = 0
+            result.append(ch)
+    if consecutive_quotes > 0:
+        for i in range(len(result) - 1, -1, -1):
+            if result[i] == "'":
+                result[i] = "\\'"
+                break
+    return ''.join(result)
+
+
+def _indent(text, n):
+    """Indent each non-empty line by *n* spaces."""
+    prefix = ' ' * n
+    return '\n'.join(
+        (prefix + line) if line.strip() else line
+        for line in text.split('\n')
+    )
+
+
+def _format_sh(script, os_type='linux'):
+    """Format a shell command for Jenkinsfile."""
+    cmd = 'bat' if os_type == 'windows' else 'sh'
+    lines = script.split('\n')
+    if len(lines) == 1 and "'" not in script:
+        return f"{cmd} '{_escape_groovy(script)}'"
+    escaped = _escape_groovy_triple(script)
+    if '\n' not in escaped:
+        return f"{cmd} '''{escaped}'''"
+    return f"{cmd} '''\n{_indent(escaped, 4)}\n'''"
+
+
+def _build_stage_block(step, os_type='linux'):
+    """Build a single stage block for a pipeline step."""
+    name = step.get('name', 'Unnamed')
+    script = step.get('script', 'echo "no script"')
+    timeout_val = step.get('timeout', 120)
+    on_failure = step.get('on_failure', 'stop')
+
+    sh_cmd = _format_sh(script, os_type)
+    body = f"timeout(time: {timeout_val}, unit: 'SECONDS') {{\n{_indent(sh_cmd, 4)}\n}}"
+
+    if on_failure == 'retry':
+        body = f"retry(2) {{\n{_indent(body, 4)}\n}}"
+    elif on_failure == 'continue':
+        body = f"catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {{\n{_indent(body, 4)}\n}}"
+
+    return (
+        f"        stage('{_escape_groovy(name)}') {{\n"
+        f"            steps {{\n"
+        f"{_indent(body, 16)}\n"
+        f"            }}\n"
+        f"        }}"
+    )
+
+
+def build_pipeline_script(
+    steps, os_type='linux', node_label=None,
+    git_repo_url='', git_branch='main', workspace_cleanup=True,
+    report_enabled=False, report_command='',
+    webhook_url='', build_plan_id=None,
+    environment_variables=None,
+    git_credential_id='',
+):
+    """
+    Generate a Declarative Pipeline (Jenkinsfile) script string.
+    Used by both the config.xml generator and the preview API.
+    """
+    if node_label:
+        agent_block = f"    agent {{ label '{_escape_groovy(node_label)}' }}"
+    else:
+        agent_block = "    agent any"
+
+    env_block = ""
+    if environment_variables:
+        env_lines = []
+        for ev in environment_variables:
+            key = re.sub(r'[^A-Za-z0-9_]', '_', ev.get('key', '').strip())
+            value = ev.get('value', '')
+            if not key:
+                continue
+            env_lines.append(f"        {key} = '{_escape_groovy(value)}'")
+        if env_lines:
+            env_block = "    environment {\n" + "\n".join(env_lines) + "\n    }"
+
+    stage_blocks = []
+
+    if git_repo_url:
+        body_lines = []
+        if workspace_cleanup:
+            body_lines.append("                    cleanWs()")
+        git_args = [
+            f"url: '{_escape_groovy(git_repo_url)}'",
+            f"branch: '{_escape_groovy(git_branch)}'",
+        ]
+        if git_credential_id:
+            git_args.append(f"credentialsId: '{_escape_groovy(git_credential_id)}'")
+        body_lines.append("                    git(")
+        for i, arg in enumerate(git_args):
+            comma = "," if i < len(git_args) - 1 else ""
+            body_lines.append(f"                        {arg}{comma}")
+        body_lines.append("                    )")
+        stage_blocks.append(
+            f"        stage('Git Checkout') {{\n"
+            f"            steps {{\n"
+            + "\n".join(body_lines) + "\n"
+            f"            }}\n"
+            f"        }}"
+        )
+
+    if not steps:
+        cmd = 'bat' if os_type == 'windows' else 'sh'
+        stage_blocks.append(
+            f"        stage('Default') {{\n"
+            f"            steps {{\n"
+            f"                {cmd} 'echo \"No build steps configured.\"'\n"
+            f"            }}\n"
+            f"        }}"
+        )
+    else:
+        for step in steps:
+            stage_blocks.append(_build_stage_block(step, os_type))
+
+    post_block = ""
+    if report_enabled and report_command:
+        report_sh = _format_sh(report_command, os_type)
+        post_block = (
+            "    post {\n"
+            "        always {\n"
+            f"{_indent(report_sh, 12)}\n"
+            "        }\n"
+            "    }"
+        )
+
+    parts = ['pipeline {']
+    parts.append(agent_block)
+    if env_block:
+        parts.append('')
+        parts.append(env_block)
+    parts.append('')
+    parts.append('    stages {')
+    for i, sb in enumerate(stage_blocks):
+        parts.append(sb)
+        if i < len(stage_blocks) - 1:
+            parts.append('')
+    parts.append('    }')
+    if post_block:
+        parts.append('')
+        parts.append(post_block)
+    parts.append('}')
+    return '\n'.join(parts) + '\n'
+
+
+def build_pipeline_job_xml(
+    steps, os_type='linux', node_label=None, description='',
+    git_repo_url='', git_branch='main', workspace_cleanup=True,
+    report_enabled=False, report_command='',
+    webhook_url='', build_plan_id=None,
+    environment_variables=None,
+    raw_jenkinsfile='',
+    git_credential_id='',
+):
+    """
+    Generate a Jenkins Pipeline job config.xml (<flow-definition>).
+    If raw_jenkinsfile is provided, use it directly instead of generating.
+    """
+    escaped_desc = saxutils.escape(description)
+    if raw_jenkinsfile:
+        pipeline_script = raw_jenkinsfile
+    else:
+        pipeline_script = build_pipeline_script(
+            steps=steps, os_type=os_type, node_label=node_label,
+            git_repo_url=git_repo_url, git_branch=git_branch,
+            workspace_cleanup=workspace_cleanup,
+            report_enabled=report_enabled, report_command=report_command,
+            webhook_url=webhook_url, build_plan_id=build_plan_id,
+            environment_variables=environment_variables,
+            git_credential_id=git_credential_id,
+        )
+    escaped_script = saxutils.escape(pipeline_script)
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<flow-definition plugin="workflow-job">\n'
+        f'  <description>{escaped_desc}</description>\n'
+        '  <keepDependencies>false</keepDependencies>\n'
+        '  <properties/>\n'
+        '  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">\n'
+        f'    <script>{escaped_script}</script>\n'
+        '    <sandbox>true</sandbox>\n'
+        '  </definition>\n'
+        '  <triggers/>\n'
+        '  <disabled>false</disabled>\n'
+        '</flow-definition>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Sync helpers
+# ---------------------------------------------------------------------------
+
+def _diagnose_jenkins_connection(url, username=None, token=None):
+    """Try a raw HTTP request to diagnose connection issues."""
+    try:
+        import requests
+        auth = (username, token) if username else None
+        resp = requests.get(url, auth=auth, timeout=10, allow_redirects=False)
+        if resp.status_code == 401:
+            return f"Jenkins 认证失败 (HTTP 401)。请检查用户名和 Token 是否正确。"
+        if resp.status_code == 403:
+            return f"Jenkins 访问被拒绝 (HTTP 403)。请确认：1) 使用 API Token 而非密码；2) 用户具有足够权限。可在 Jenkins → 用户 → 设置 → API Token 中生成。"
+        if resp.status_code >= 500:
+            return f"Jenkins 服务器错误 (HTTP {resp.status_code})。请检查 Jenkins 服务状态、插件兼容性或 Script Security 设置。"
+        return None
+    except Exception as e:
+        return f"无法连接到 Jenkins: {e}"
+
+
+def sync_jenkins_job(plan):
+    """
+    Create or update the Jenkins Pipeline job for the given BuildPlan.
+    Returns the config.xml string on success, raises on failure.
+    """
+    machine = plan.executor_machine
+    if not machine or not machine.jenkins_url:
+        raise ValueError("执行机未配置 Jenkins 信息")
+
+    client = JenkinsClient(
+        server_url=machine.jenkins_url,
+        username=machine.jenkins_username or None,
+        token=machine.jenkins_token or None,
+    )
+    job_name = plan.name
+    steps = list(
+        plan.steps.order_by('order').values('name', 'script', 'timeout', 'on_failure')
+    )
+    node_label = machine.jenkins_node_name or None
+    os_type = machine.os_type or 'linux'
+    description = (
+        f"[Test Master] {plan.description}"
+        if plan.description
+        else "[Test Master] Auto-managed build plan"
+    )
+
+    raw_jenkinsfile = getattr(plan, 'jenkinsfile_text', '') or ''
+
+    webhook_base_url = ''
+
+    config_xml = build_pipeline_job_xml(
+        steps=steps,
+        os_type=os_type,
+        node_label=node_label,
+        description=description,
+        git_repo_url=getattr(plan, 'git_repo_url', '') or '',
+        git_branch=getattr(plan, 'git_branch', 'main') or 'main',
+        workspace_cleanup=getattr(plan, 'workspace_cleanup', True),
+        report_enabled=getattr(plan, 'report_enabled', False),
+        report_command=getattr(plan, 'report_command', '') or '',
+        webhook_url=webhook_base_url,
+        build_plan_id=plan.id,
+        environment_variables=getattr(plan, 'environment_variables', None) or [],
+        raw_jenkinsfile=raw_jenkinsfile,
+        git_credential_id=getattr(plan, 'git_credential_id', '') or '',
+    )
+
+    try:
+        version = client.ping()
+        logger.info("Jenkins connection OK, version: %s", version)
+    except ConnectionError as e:
+        diag = _diagnose_jenkins_connection(
+            machine.jenkins_url, machine.jenkins_username, machine.jenkins_token
+        )
+        raise ConnectionError(diag or str(e))
+    except Exception as e:
+        diag = _diagnose_jenkins_connection(
+            machine.jenkins_url, machine.jenkins_username, machine.jenkins_token
+        )
+        if diag:
+            raise ConnectionError(diag)
+        raise
+
+    try:
+        if client.server.job_exists(job_name):
+            client.server.reconfig_job(job_name, config_xml)
+            logger.info("Reconfigured Jenkins job: %s", job_name)
+        else:
+            client.server.create_job(job_name, config_xml)
+            logger.info("Created Jenkins job: %s", job_name)
+    except Exception as e:
+        err_str = str(e)
+        if '500' in err_str:
+            raise RuntimeError(
+                f"Jenkins 返回 500 错误。可能原因：\n"
+                f"1. Pipeline 脚本被 Script Security 插件拦截\n"
+                f"2. 缺少必要的 Jenkins 插件\n"
+                f"3. Jenkins 内部错误\n"
+                f"原始错误: {err_str}"
+            )
+        raise
+
+    if not plan.jenkins_job_name:
+        plan.jenkins_job_name = job_name
+        plan.save(update_fields=['jenkins_job_name'])
+
+    return config_xml

@@ -90,6 +90,21 @@
       </v-data-table>
     </v-card>
 
+    <!-- Delete Confirm Dialog -->
+    <v-dialog v-model="deleteConfirmDialog" max-width="400">
+      <v-card class="rounded-xl">
+        <v-card-title class="bg-error text-white pa-4">
+          <span class="text-subtitle-1 font-weight-bold">{{ $t('common.delete') }}</span>
+        </v-card-title>
+        <v-card-text class="pa-4">{{ $t('common.confirmDelete', { name: deleteTarget?.name }) }}</v-card-text>
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn variant="text" @click="deleteConfirmDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="error" variant="flat" @click="confirmDeleteItem">{{ $t('common.delete') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="dialog" max-width="650px">
       <v-card class="rounded-xl">
@@ -119,7 +134,44 @@
             </v-row>
             <v-text-field v-model="form.jenkins_node_name" :label="$t('testing.agents.fields.jenkinsNodeName')" variant="outlined" density="compact" class="mb-3" />
             <v-combobox v-model="form.labels" :label="$t('testing.agents.fields.labels')" variant="outlined" density="compact" multiple chips closable-chips class="mb-3" />
-            <v-textarea v-model="form.description" :label="$t('testing.agents.fields.description')" variant="outlined" density="compact" rows="2" />
+            <v-textarea v-model="form.description" :label="$t('testing.agents.fields.description')" variant="outlined" density="compact" rows="2" class="mb-3" />
+
+            <!-- Jenkins Configuration -->
+            <v-divider class="my-4" />
+            <div class="text-subtitle-2 font-weight-bold mb-2">Jenkins</div>
+            <v-text-field v-model="form.jenkins_url" :label="$t('testing.agents.fields.jenkinsUrl')" variant="outlined" density="compact" class="mb-2" placeholder="http://127.0.0.1:8080" />
+            <v-row>
+              <v-col cols="6">
+                <v-text-field v-model="form.jenkins_username" :label="$t('testing.agents.fields.jenkinsUsername')" variant="outlined" density="compact" />
+              </v-col>
+              <v-col cols="6">
+                <v-text-field
+                  v-model="form.jenkins_token"
+                  :label="$t('testing.agents.fields.jenkinsToken')"
+                  variant="outlined"
+                  density="compact"
+                  type="password"
+                  :placeholder="form.id && form.has_jenkins_token ? '●●●●●● (已配置，留空不修改)' : ''"
+                  :hint="form.id && form.has_jenkins_token ? '留空表示不修改' : ''"
+                  persistent-hint
+                />
+              </v-col>
+            </v-row>
+            <v-btn
+              v-if="form.jenkins_url"
+              variant="tonal"
+              color="info"
+              size="small"
+              prepend-icon="mdi-connection"
+              class="text-none mt-1"
+              :loading="testingJenkins"
+              @click="testJenkins"
+            >
+              {{ $t('testing.agents.fields.testConnection') }}
+            </v-btn>
+            <v-alert v-if="jenkinsTestResult" :type="jenkinsTestResult.ok ? 'success' : 'error'" variant="tonal" density="compact" class="mt-2 text-caption" closable @click:close="jenkinsTestResult = null">
+              {{ jenkinsTestResult.message }}
+            </v-alert>
           </v-form>
         </v-card-text>
 
@@ -140,7 +192,7 @@ import { useI18n } from 'vue-i18n'
 import { useSnackbarStore } from '@/store/snackbar'
 import {
   getExecutorMachines, createExecutorMachine, updateExecutorMachine,
-  deleteExecutorMachine, pingExecutorMachine
+  deleteExecutorMachine, pingExecutorMachine, testJenkinsConnection,
 } from '@/api/testing'
 
 const { t } = useI18n()
@@ -155,6 +207,8 @@ const formRef = ref<any>(null)
 const items = ref<any[]>([])
 
 const form = ref<any>({})
+const testingJenkins = ref(false)
+const jenkinsTestResult = ref<{ ok: boolean; message: string } | null>(null)
 
 const headers = computed(() => [
   { title: t('testing.agents.fields.name'), key: 'name', align: 'start' as const },
@@ -198,8 +252,29 @@ const loadData = async () => {
 }
 
 const openDialog = (item?: any) => {
-  form.value = item ? { ...item } : { name: '', hostname: '', ip_address: '', port: 22, os_type: 'linux', labels: [], description: '', jenkins_node_name: '' }
+  if (item) {
+    form.value = { ...item, jenkins_token: '' }
+  } else {
+    form.value = { name: '', hostname: '', ip_address: '', port: 22, os_type: 'linux', labels: [], description: '', jenkins_node_name: '', jenkins_url: '', jenkins_username: '', jenkins_token: '' }
+  }
+  jenkinsTestResult.value = null
   dialog.value = true
+}
+
+const testJenkins = async () => {
+  if (!form.value.id) {
+    jenkinsTestResult.value = { ok: false, message: '请先保存执行机后再测试 Jenkins 连接' }
+    return
+  }
+  testingJenkins.value = true
+  jenkinsTestResult.value = null
+  try {
+    const res = await testJenkinsConnection(form.value.id)
+    jenkinsTestResult.value = { ok: res.status === 'ok', message: res.version ? `连接成功 (v${res.version})` : (res.message || '连接失败') }
+  } catch (e: any) {
+    jenkinsTestResult.value = { ok: false, message: e?.message || '连接失败' }
+  }
+  testingJenkins.value = false
 }
 
 const saveItem = async () => {
@@ -207,10 +282,17 @@ const saveItem = async () => {
   if (!valid) return
   saving.value = true
   try {
-    if (form.value.id) {
-      await updateExecutorMachine(form.value.id, form.value)
+    const data = { ...form.value }
+    if (data.id && !data.jenkins_token) {
+      delete data.jenkins_token
+    }
+    delete data.has_jenkins_token
+    delete data._pinging
+
+    if (data.id) {
+      await updateExecutorMachine(data.id, data)
     } else {
-      await createExecutorMachine(form.value)
+      await createExecutorMachine(data)
     }
     dialog.value = false
     snackbar.notify(t('common.success'), 'success')
@@ -221,10 +303,19 @@ const saveItem = async () => {
   saving.value = false
 }
 
-const deleteItem = async (item: any) => {
-  if (!confirm(t('common.confirmDelete', { name: item.name }))) return
+const deleteConfirmDialog = ref(false)
+const deleteTarget = ref<any>(null)
+
+const deleteItem = (item: any) => {
+  deleteTarget.value = item
+  deleteConfirmDialog.value = true
+}
+
+const confirmDeleteItem = async () => {
+  deleteConfirmDialog.value = false
+  if (!deleteTarget.value) return
   try {
-    await deleteExecutorMachine(item.id)
+    await deleteExecutorMachine(deleteTarget.value.id)
     snackbar.notify(t('common.success'), 'success')
     loadData()
   } catch (e: any) {

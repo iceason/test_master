@@ -451,6 +451,7 @@ class EnvironmentViewSet(viewsets.ModelViewSet):
     queryset = Environment.objects.all()
     serializer_class = EnvironmentSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
     search_fields = ['name', 'code', 'description']
     ordering_fields = ['id', 'name', 'created_at']
     ordering = ['id']

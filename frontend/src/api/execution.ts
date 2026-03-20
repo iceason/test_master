@@ -13,6 +13,32 @@ export const getEnvironments = (params?: any) => {
   })
 }
 
+// 创建环境
+export const createEnvironment = (data: any) => {
+  return request({
+    url: 'environments/',
+    method: 'post',
+    data
+  })
+}
+
+// 更新环境
+export const updateEnvironment = (id: number, data: any) => {
+  return request({
+    url: `environments/${id}/`,
+    method: 'put',
+    data
+  })
+}
+
+// 删除环境
+export const deleteEnvironment = (id: number) => {
+  return request({
+    url: `environments/${id}/`,
+    method: 'delete'
+  })
+}
+
 // 批量执行测试用例
 export const executeTestCases = (data: {
   name: string

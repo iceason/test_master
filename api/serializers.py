@@ -64,7 +64,7 @@ class EnvironmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Environment
-        fields = ['id', 'name', 'code', 'base_url', 'description', 'config', 'is_active', 'created_at']
+        fields = ['id', 'name', 'code', 'base_url', 'token', 'description', 'config', 'is_active', 'created_at', 'updated_at']
 
 
 class TestExecutionSerializer(serializers.ModelSerializer):

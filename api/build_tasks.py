@@ -29,6 +29,29 @@ def run_build_task(self, execution_id):
     run_build_sync(execution_id)
 
 
+def _dispatch_build(execution):
+    """
+    Dispatch a build execution using Celery if available, otherwise fall back
+    to a background thread. Reuses the same CELERY_AVAILABLE check as the
+    manual trigger endpoint.
+    """
+    import threading
+    from .views import CELERY_AVAILABLE
+
+    if CELERY_AVAILABLE:
+        try:
+            task = run_build_task.delay(execution.id)
+            execution.celery_task_id = task.id
+            execution.save(update_fields=['celery_task_id'])
+            return
+        except Exception:
+            logger.warning("Celery dispatch failed, falling back to thread")
+
+    threading.Thread(
+        target=run_build_sync, args=(execution.id,), daemon=True
+    ).start()
+
+
 def run_build_sync(execution_id):
     """Synchronous build runner (used by both Celery and thread fallback)."""
     from .models import BuildExecution
@@ -68,8 +91,10 @@ def run_build_sync(execution_id):
         # 2. Wait for build number
         build_number = client.get_build_number_from_queue(queue_id, timeout=120)
         execution.jenkins_build_number = build_number
+        machine = plan.executor_machine
+        jenkins_base = machine.jenkins_url.rstrip('/') if machine and machine.jenkins_url else ''
         execution.jenkins_build_url = (
-            f"{plan.jenkins_server_url}/job/{plan.jenkins_job_name}/{build_number}/"
+            f"{jenkins_base}/job/{plan.jenkins_job_name}/{build_number}/"
         )
         execution.log_text += f"Build started: #{build_number}\n"
         execution.save(update_fields=[
@@ -106,13 +131,8 @@ def run_build_sync(execution_id):
 
 
 def _build_jenkins_params(plan):
-    """Build Jenkins job parameters from the plan's steps."""
-    params = {}
-    # Pass build steps as a JSON parameter if the Jenkins job accepts it
-    steps = list(plan.steps.order_by('order').values('name', 'script', 'timeout'))
-    if steps:
-        params['BUILD_STEPS'] = json.dumps(steps)
-    return params
+    """Build Jenkins job parameters. Environment variables are already in the Jenkinsfile."""
+    return {}
 
 
 def _poll_build(client, execution, job_name, build_number, poll_interval=5, timeout=7200):
@@ -187,16 +207,31 @@ def _send_notification(execution):
     email_cfg = config.get('email', {})
     if email_cfg.get('enabled') and email_cfg.get('recipients'):
         try:
-            subject = f"[Test Master] Build '{plan.name}' - {execution.status.upper()}"
-            body = (
-                f"Build Plan: {plan.name}\n"
-                f"Status: {execution.status}\n"
-                f"Trigger: {execution.trigger_type}\n"
-                f"Triggered by: {execution.triggered_by}\n"
-                f"Duration: {execution.duration_display}\n"
-            )
-            if execution.jenkins_build_url:
-                body += f"Jenkins: {execution.jenkins_build_url}\n"
+            from .models import EmailTemplate
+
+            status_emoji_map = {
+                'success': '✅', 'failed': '❌', 'cancelled': '⚠️',
+                'running': '🔄', 'pending': '⏳',
+            }
+            ctx = {
+                'plan_name': plan.name,
+                'status': execution.status,
+                'status_upper': execution.status.upper(),
+                'status_emoji': status_emoji_map.get(execution.status, '📋'),
+                'trigger_type': execution.trigger_type or '手动',
+                'triggered_by': execution.triggered_by or 'system',
+                'duration': execution.duration_display,
+                'jenkins_url': execution.jenkins_build_url or '-',
+                'timestamp': execution.started_at.strftime('%Y-%m-%d %H:%M:%S') if execution.started_at else '-',
+            }
+
+            tpl = EmailTemplate.objects.filter(is_default=True).first()
+            if tpl:
+                subject, body = tpl.render(ctx)
+            else:
+                subject = f"[Test Master] {plan.name} - {execution.status.upper()}"
+                body = "\n".join(f"{k}: {v}" for k, v in ctx.items())
+
             send_mail(
                 subject, body,
                 getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@testmaster.local'),
@@ -300,13 +335,7 @@ def check_cron_builds():
                 triggered_by='scheduler',
                 status='pending',
             )
-            try:
-                run_build_task.delay(execution.id)
-            except Exception:
-                import threading
-                threading.Thread(
-                    target=run_build_sync, args=(execution.id,), daemon=True
-                ).start()
+            _dispatch_build(execution)
 
 
 def _cron_matches(expression, dt):

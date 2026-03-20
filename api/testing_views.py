@@ -1,8 +1,10 @@
 """
 ViewSets for the Testing module: ExecutorMachine, BuildPlan, BuildExecution.
-Also includes external trigger and Jenkins webhook endpoints.
+Also includes external trigger, Jenkins webhook, report upload and progressive log endpoints.
 """
 import logging
+import os
+import zipfile
 import subprocess
 import socket
 
@@ -11,16 +13,19 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+from rest_framework.parsers import MultiPartParser
 from django.http import StreamingHttpResponse, HttpResponse
 from django.utils import timezone
+from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 
-from .models import ExecutorMachine, BuildPlan, BuildStep, BuildExecution
+from .models import ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate
 from .testing_serializers import (
     ExecutorMachineSerializer,
     BuildPlanSerializer, BuildPlanListSerializer,
     BuildExecutionSerializer, BuildExecutionListSerializer,
+    EmailTemplateSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +69,24 @@ class ExecutorMachineViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK,
             )
 
+    @action(detail=True, methods=['post'], url_path='test-jenkins')
+    def test_jenkins(self, request, pk=None):
+        """Test Jenkins connectivity for this executor machine."""
+        machine = self.get_object()
+        if not machine.jenkins_url:
+            return Response({'status': 'error', 'message': 'Jenkins URL not configured'})
+        try:
+            from .jenkins_client import JenkinsClient
+            client = JenkinsClient(
+                server_url=machine.jenkins_url,
+                username=machine.jenkins_username or None,
+                token=machine.jenkins_token or None,
+            )
+            version = client.ping()
+            return Response({'status': 'ok', 'version': version})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)})
+
 
 # -----------------------------------------------------------------------
 # BuildPlan
@@ -73,7 +96,7 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
     queryset = BuildPlan.objects.all()
     serializer_class = BuildPlanSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'is_cron_enabled', 'executor_machine', 'environment']
+    filterset_fields = ['status', 'is_cron_enabled', 'executor_machine']
     search_fields = ['name', 'description', 'jenkins_job_name']
     ordering_fields = ['id', 'name', 'created_at', 'updated_at']
     ordering = ['-updated_at']
@@ -82,6 +105,106 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return BuildPlanListSerializer
         return BuildPlanSerializer
+
+    def _sync_jenkins_job(self, plan):
+        """Try to sync the plan to Jenkins; return dict with result info."""
+        machine = plan.executor_machine
+        if not machine or not machine.jenkins_url:
+            return None
+        try:
+            from .jenkins_client import sync_jenkins_job
+            sync_jenkins_job(plan)
+            return {'jenkins_sync': 'ok'}
+        except Exception as e:
+            err_msg = str(e)
+            try:
+                from .jenkins_client import _diagnose_jenkins_connection
+                diag = _diagnose_jenkins_connection(
+                    machine.jenkins_url, machine.jenkins_username, machine.jenkins_token
+                )
+                if diag:
+                    err_msg = diag
+            except Exception:
+                pass
+            logger.warning("Failed to sync Jenkins job for plan %s: %s", plan.id, e)
+            return {'jenkins_sync': 'error', 'jenkins_error': err_msg}
+
+    def _ensure_jenkinsfile_text(self, plan):
+        """If jenkinsfile_text is empty (visual mode save), generate from steps."""
+        if not plan.jenkinsfile_text:
+            from .jenkins_client import build_pipeline_script
+            machine = plan.executor_machine
+            steps = list(
+                plan.steps.order_by('order').values('name', 'script', 'timeout', 'on_failure')
+            )
+            plan.jenkinsfile_text = build_pipeline_script(
+                steps=steps,
+                os_type=getattr(machine, 'os_type', 'linux') if machine else 'linux',
+                node_label=getattr(machine, 'jenkins_node_name', None) if machine else None,
+                git_repo_url=plan.git_repo_url or '',
+                git_branch=plan.git_branch or 'main',
+                workspace_cleanup=plan.workspace_cleanup,
+                report_enabled=plan.report_enabled,
+                report_command=plan.report_command or '',
+                environment_variables=plan.environment_variables or [],
+                git_credential_id=getattr(plan, 'git_credential_id', '') or '',
+            )
+            plan.save(update_fields=['jenkinsfile_text'])
+
+    def perform_create(self, serializer):
+        plan = serializer.save()
+        self._ensure_jenkinsfile_text(plan)
+        sync_result = self._sync_jenkins_job(plan)
+        if sync_result:
+            plan._sync_result = sync_result
+
+    def perform_update(self, serializer):
+        plan = serializer.save()
+        self._ensure_jenkinsfile_text(plan)
+        sync_result = self._sync_jenkins_job(plan)
+        if sync_result:
+            plan._sync_result = sync_result
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        plan = BuildPlan.objects.get(id=response.data['id'])
+        if hasattr(plan, '_sync_result'):
+            response.data['_jenkins'] = plan._sync_result
+        return response
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        plan = self.get_object()
+        if hasattr(plan, '_sync_result'):
+            response.data['_jenkins'] = plan._sync_result
+        return response
+
+    @action(detail=True, methods=['get'], url_path='jenkinsfile_preview')
+    def jenkinsfile_preview(self, request, pk=None):
+        """Return the Jenkinsfile script that would be pushed to Jenkins."""
+        plan = self.get_object()
+        raw_jenkinsfile = getattr(plan, 'jenkinsfile_text', '') or ''
+        if raw_jenkinsfile:
+            return Response({'jenkinsfile': raw_jenkinsfile})
+
+        from .jenkins_client import build_pipeline_script
+        machine = plan.executor_machine
+        steps = list(
+            plan.steps.order_by('order').values('name', 'script', 'timeout', 'on_failure')
+        )
+        script = build_pipeline_script(
+            steps=steps,
+            os_type=getattr(machine, 'os_type', 'linux') if machine else 'linux',
+            node_label=getattr(machine, 'jenkins_node_name', None) if machine else None,
+            git_repo_url=getattr(plan, 'git_repo_url', '') or '',
+            git_branch=getattr(plan, 'git_branch', 'main') or 'main',
+            workspace_cleanup=getattr(plan, 'workspace_cleanup', True),
+            report_enabled=getattr(plan, 'report_enabled', False),
+            report_command=getattr(plan, 'report_command', '') or '',
+            environment_variables=getattr(plan, 'environment_variables', None) or [],
+            git_credential_id=getattr(plan, 'git_credential_id', '') or '',
+        )
+        return Response({'jenkinsfile': script})
 
     @action(detail=True, methods=['post'])
     def trigger(self, request, pk=None):
@@ -93,9 +216,30 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        machine = plan.executor_machine
+        if not machine or not machine.jenkins_url:
+            return Response(
+                {'error': 'No executor machine or Jenkins not configured'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not plan.jenkins_job_name:
+            try:
+                from .jenkins_client import sync_jenkins_job
+                sync_jenkins_job(plan)
+            except (ConnectionError, ValueError) as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            except Exception as e:
+                return Response(
+                    {'error': f'Jenkins 同步失败: {e}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         triggered_by = request.user.username if request.user.is_authenticated else 'anonymous'
 
-        # Create execution record
         execution = BuildExecution.objects.create(
             build_plan=plan,
             executor_machine=plan.executor_machine,
@@ -104,30 +248,64 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
             status='pending',
         )
 
-        # Launch async build task
-        try:
-            from .build_tasks import run_build_task
-            task = run_build_task.delay(execution.id)
-            execution.celery_task_id = task.id
-            execution.save(update_fields=['celery_task_id'])
-            return Response({
-                'execution_id': execution.id,
-                'task_id': task.id,
-                'status': 'accepted',
-            }, status=status.HTTP_202_ACCEPTED)
-        except Exception:
-            # Fallback: run in thread
-            import threading
+        from .build_tasks import _dispatch_build
+        _dispatch_build(execution)
 
-            def _run():
-                from .build_tasks import run_build_sync
-                run_build_sync(execution.id)
+        return Response({
+            'execution_id': execution.id,
+            'status': 'accepted',
+        }, status=status.HTTP_202_ACCEPTED)
 
-            threading.Thread(target=_run, daemon=True).start()
-            return Response({
-                'execution_id': execution.id,
-                'status': 'processing',
-            }, status=status.HTTP_202_ACCEPTED)
+    @action(detail=True, methods=['post'])
+    def stop(self, request, pk=None):
+        """Stop the latest running build."""
+        plan = self.get_object()
+        execution = plan.executions.filter(status='running').order_by('-started_at').first()
+        if not execution:
+            return Response({'error': 'No running build'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if execution.jenkins_build_number:
+            try:
+                from .jenkins_client import create_jenkins_client
+                client = create_jenkins_client(plan)
+                if client:
+                    client.stop_build(plan.jenkins_job_name, execution.jenkins_build_number)
+            except Exception as e:
+                logger.warning("Failed to stop Jenkins build: %s", e)
+
+        execution.status = 'cancelled'
+        execution.finished_at = timezone.now()
+        if execution.started_at:
+            delta = execution.finished_at - execution.started_at
+            execution.duration_ms = int(delta.total_seconds() * 1000)
+        execution.save()
+        return Response({'status': 'cancelled'})
+
+    @action(detail=True, methods=['get'], url_path='refresh-status')
+    def refresh_status(self, request, pk=None):
+        """Refresh the status of the latest execution from Jenkins."""
+        plan = self.get_object()
+        execution = plan.executions.order_by('-started_at').first()
+        if not execution:
+            return Response({'status': 'no_executions'})
+        return Response({
+            'execution_id': execution.id,
+            'status': execution.status,
+            'started_at': execution.started_at,
+            'finished_at': execution.finished_at,
+            'duration_ms': execution.duration_ms,
+        })
+
+    @action(detail=True, methods=['post'], url_path='sync-jenkins')
+    def sync_jenkins(self, request, pk=None):
+        """Force sync the Jenkins job config."""
+        plan = self.get_object()
+        result = self._sync_jenkins_job(plan)
+        if not result:
+            return Response({'error': 'Jenkins not configured'}, status=status.HTTP_400_BAD_REQUEST)
+        if result.get('jenkins_sync') == 'error':
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(result)
 
     @action(detail=True, methods=['get'])
     def executions(self, request, pk=None):
@@ -238,6 +416,19 @@ class BuildExecutionViewSet(viewsets.ReadOnlyModelViewSet):
         execution.save()
         return Response({'status': 'cancelled'})
 
+    @action(detail=True, methods=['get'], url_path='progressive-log')
+    def progressive_log(self, request, pk=None):
+        """Return incremental log content starting from a byte offset."""
+        execution = self.get_object()
+        start = int(request.query_params.get('start', 0))
+        log_text = execution.log_text or ''
+        chunk = log_text[start:]
+        return Response({
+            'log': chunk,
+            'offset': start + len(chunk),
+            'more': execution.status in ('pending', 'running'),
+        })
+
 
 # -----------------------------------------------------------------------
 # External Trigger API (token-based, no auth required)
@@ -253,13 +444,30 @@ class BuildTriggerView(APIView):
 
     def post(self, request, trigger_token):
         try:
-            plan = BuildPlan.objects.get(
-                trigger_token=trigger_token, status='active')
+            plan = BuildPlan.objects.select_related(
+                'executor_machine'
+            ).get(trigger_token=trigger_token, status='active')
         except BuildPlan.DoesNotExist:
             return Response(
                 {'error': 'Invalid or disabled trigger token'},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if not plan.executor_machine or not plan.executor_machine.jenkins_url:
+            return Response(
+                {'error': 'No executor machine with Jenkins configured'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not plan.jenkins_job_name:
+            try:
+                from .jenkins_client import sync_jenkins_job
+                sync_jenkins_job(plan)
+            except Exception as e:
+                return Response(
+                    {'error': f'Failed to create Jenkins job: {e}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         triggered_by = request.data.get('triggered_by', 'external_api')
 
@@ -271,19 +479,8 @@ class BuildTriggerView(APIView):
             status='pending',
         )
 
-        try:
-            from .build_tasks import run_build_task
-            task = run_build_task.delay(execution.id)
-            execution.celery_task_id = task.id
-            execution.save(update_fields=['celery_task_id'])
-        except Exception:
-            import threading
-
-            def _run():
-                from .build_tasks import run_build_sync
-                run_build_sync(execution.id)
-
-            threading.Thread(target=_run, daemon=True).start()
+        from .build_tasks import _dispatch_build
+        _dispatch_build(execution)
 
         return Response({
             'execution_id': execution.id,
@@ -364,3 +561,115 @@ class JenkinsWebhookView(APIView):
             pass
 
         return Response({'status': 'ok', 'execution_id': execution.id})
+
+
+# -----------------------------------------------------------------------
+# Report Upload (from Jenkins build scripts)
+# -----------------------------------------------------------------------
+
+class ReportUploadView(APIView):
+    """
+    POST /api/upload-report/<execution_id>/
+    Receive a report.zip uploaded from a Jenkins build script.
+    Extracts it to MEDIA_ROOT/reports/<execution_id>/.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, execution_id):
+        try:
+            execution = BuildExecution.objects.get(id=execution_id)
+        except BuildExecution.DoesNotExist:
+            return Response(
+                {'error': 'Execution not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        report_file = request.FILES.get('report')
+        if not report_file:
+            return Response(
+                {'error': 'No report file uploaded'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        report_dir = os.path.join(settings.MEDIA_ROOT, 'reports', str(execution_id))
+        os.makedirs(report_dir, exist_ok=True)
+
+        zip_path = os.path.join(report_dir, 'report.zip')
+        with open(zip_path, 'wb+') as f:
+            for chunk in report_file.chunks():
+                f.write(chunk)
+
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(report_dir)
+        except zipfile.BadZipFile:
+            return Response(
+                {'error': 'Invalid zip file'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        report_url = f'/media/reports/{execution_id}/index.html'
+        execution.report_type = 'allure'
+        execution.report_url = report_url
+        execution.save(update_fields=['report_type', 'report_url'])
+
+        return Response({
+            'status': 'ok',
+            'report_url': report_url,
+        })
+
+
+# -----------------------------------------------------------------------
+# Email Template Management
+# -----------------------------------------------------------------------
+
+class EmailTemplateViewSet(viewsets.ModelViewSet):
+    queryset = EmailTemplate.objects.all()
+    serializer_class = EmailTemplateSerializer
+
+    @action(detail=True, methods=['post'], url_path='set_default')
+    def set_default(self, request, pk=None):
+        tpl = self.get_object()
+        tpl.is_default = True
+        tpl.save()
+        return Response({'status': 'ok'})
+
+    @action(detail=True, methods=['post'])
+    def preview(self, request, pk=None):
+        tpl = self.get_object()
+        sample = {
+            'plan_name': '示例构建计划',
+            'status': 'success',
+            'status_upper': 'SUCCESS',
+            'status_emoji': '✅',
+            'trigger_type': '手动',
+            'triggered_by': 'admin',
+            'duration': '1m 23s',
+            'jenkins_url': 'http://127.0.0.1:8080/job/demo/1/',
+            'timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        subject, body = tpl.render(sample)
+        return Response({'subject': subject, 'body': body})
+
+    @action(detail=False, methods=['post'], url_path='preview_custom')
+    def preview_custom(self, request):
+        subject_tpl = request.data.get('subject', '')
+        body_tpl = request.data.get('body', '')
+        sample = {
+            'plan_name': '示例构建计划',
+            'status': 'success',
+            'status_upper': 'SUCCESS',
+            'status_emoji': '✅',
+            'trigger_type': '手动',
+            'triggered_by': 'admin',
+            'duration': '1m 23s',
+            'jenkins_url': 'http://127.0.0.1:8080/job/demo/1/',
+            'timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        for key, value in sample.items():
+            placeholder = '{{' + key + '}}'
+            subject_tpl = subject_tpl.replace(placeholder, str(value))
+            body_tpl = body_tpl.replace(placeholder, str(value))
+        return Response({'subject': subject_tpl, 'body': body_tpl})

@@ -8,7 +8,8 @@ from .views import (DirectoryViewSet, InterfaceViewSet, TestCaseViewSet, TestCas
 from .metrics import PrometheusMetricsView
 from .testing_views import (
     ExecutorMachineViewSet, BuildPlanViewSet, BuildExecutionViewSet,
-    BuildTriggerView, JenkinsWebhookView,
+    BuildTriggerView, JenkinsWebhookView, ReportUploadView,
+    EmailTemplateViewSet,
 )
 
 router = DefaultRouter()
@@ -23,6 +24,7 @@ router.register(r'executions', TestExecutionViewSet)
 router.register(r'executor-machines', ExecutorMachineViewSet)
 router.register(r'build-plans', BuildPlanViewSet)
 router.register(r'build-executions', BuildExecutionViewSet)
+router.register(r'email-templates', EmailTemplateViewSet)
 
 urlpatterns = [
     path('export/', ExportTestCasesView.as_view(), name='export_testcases'),
@@ -37,5 +39,6 @@ urlpatterns = [
     # Testing module - external endpoints
     path('build-trigger/<str:trigger_token>/', BuildTriggerView.as_view(), name='build_trigger'),
     path('jenkins-webhook/', JenkinsWebhookView.as_view(), name='jenkins_webhook'),
+    path('upload-report/<int:execution_id>/', ReportUploadView.as_view(), name='upload_report'),
     path('', include(router.urls)),
 ]

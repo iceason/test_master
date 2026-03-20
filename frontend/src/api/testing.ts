@@ -25,6 +25,9 @@ export const deleteExecutorMachine = (id: number) =>
 export const pingExecutorMachine = (id: number) =>
   request({ url: `executor-machines/${id}/ping/`, method: 'post' })
 
+export const testJenkinsConnection = (machineId: number) =>
+  request({ url: `executor-machines/${machineId}/test-jenkins/`, method: 'post' })
+
 // -----------------------------------------------------------------------
 // Build Plans
 // -----------------------------------------------------------------------
@@ -50,6 +53,9 @@ export const triggerBuildPlan = (id: number) =>
 export const getBuildPlanExecutions = (id: number, params?: any) =>
   request({ url: `build-plans/${id}/executions/`, method: 'get', params })
 
+export const getJenkinsfilePreview = (planId: number) =>
+  request({ url: `build-plans/${planId}/jenkinsfile_preview/`, method: 'get' })
+
 // -----------------------------------------------------------------------
 // Build Executions
 // -----------------------------------------------------------------------
@@ -71,3 +77,62 @@ export const getBuildExecutionReport = (id: number) =>
 
 export const cancelBuildExecution = (id: number) =>
   request({ url: `build-executions/${id}/cancel/`, method: 'post' })
+
+export const stopBuildPlan = (id: number) =>
+  request({ url: `build-plans/${id}/stop/`, method: 'post' })
+
+export const refreshBuildPlanStatus = (id: number) =>
+  request({ url: `build-plans/${id}/refresh_status/`, method: 'post' })
+
+export const syncJenkinsJob = (id: number) =>
+  request({ url: `build-plans/${id}/sync_jenkins/`, method: 'post' })
+
+export const getProgressiveLog = (executionId: number, start?: number) =>
+  request({ url: `build-executions/${executionId}/progressive_log/`, method: 'get', params: start !== undefined ? { start } : undefined })
+
+// -----------------------------------------------------------------------
+// Environments
+// -----------------------------------------------------------------------
+
+export const getEnvironments = (params?: any) =>
+  request({ url: 'environments/', method: 'get', params })
+
+export const getEnvironment = (id: number) =>
+  request({ url: `environments/${id}/`, method: 'get' })
+
+export const createEnvironment = (data: any) =>
+  request({ url: 'environments/', method: 'post', data })
+
+export const updateEnvironment = (id: number, data: any) =>
+  request({ url: `environments/${id}/`, method: 'put', data })
+
+export const deleteEnvironment = (id: number) =>
+  request({ url: `environments/${id}/`, method: 'delete' })
+
+// -----------------------------------------------------------------------
+// Email Templates
+// -----------------------------------------------------------------------
+
+export const getEmailTemplates = (params?: any) =>
+  request({ url: 'email-templates/', method: 'get', params })
+
+export const getEmailTemplate = (id: number) =>
+  request({ url: `email-templates/${id}/`, method: 'get' })
+
+export const createEmailTemplate = (data: any) =>
+  request({ url: 'email-templates/', method: 'post', data })
+
+export const updateEmailTemplate = (id: number, data: any) =>
+  request({ url: `email-templates/${id}/`, method: 'put', data })
+
+export const deleteEmailTemplate = (id: number) =>
+  request({ url: `email-templates/${id}/`, method: 'delete' })
+
+export const setDefaultEmailTemplate = (id: number) =>
+  request({ url: `email-templates/${id}/set_default/`, method: 'post' })
+
+export const previewEmailTemplate = (id: number) =>
+  request({ url: `email-templates/${id}/preview/`, method: 'post' })
+
+export const previewCustomEmailTemplate = (data: { subject: string; body: string }) =>
+  request({ url: 'email-templates/preview_custom/', method: 'post', data })

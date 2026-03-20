@@ -74,6 +74,18 @@ const routes = [
         name: 'Profile',
         component: () => import('@/views/profile/index.vue'),
         meta: { title: 'Profile' }
+      },
+      {
+        path: 'settings/email-templates',
+        name: 'EmailTemplates',
+        component: () => import('@/views/settings/EmailTemplates.vue'),
+        meta: { title: 'Email Templates' }
+      },
+      {
+        path: 'settings/environments',
+        name: 'Environments',
+        component: () => import('@/views/settings/Environments.vue'),
+        meta: { title: 'Environments' }
       }
     ]
   }

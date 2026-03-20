@@ -33,7 +33,7 @@ function createInstance() {
       if (responseType === 'blob' || responseType === 'arraybuffer') return apiData
       
       // 如果存在 code 字段，按业务逻辑判断（自定义响应格式）
-      if (apiData.code !== undefined) {
+      if (typeof apiData.code === 'number' && apiData.code !== undefined) {
         if (apiData.code === 0) {
           return apiData.data
         } else {
@@ -57,7 +57,7 @@ function createInstance() {
     },
     (error) => {
       const status = error.response?.status
-      const message = error.response?.data?.detail || error.response?.data?.message || error.message
+      const message = error.response?.data?.detail || error.response?.data?.error || error.response?.data?.message || error.message
       
       if (status === 401) {
         // Token 过期

@@ -1,16 +1,32 @@
 from rest_framework import serializers
-from .models import ExecutorMachine, BuildPlan, BuildStep, BuildExecution
+from .models import ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate
 
 
 class ExecutorMachineSerializer(serializers.ModelSerializer):
+    has_jenkins_token = serializers.SerializerMethodField()
+
     class Meta:
         model = ExecutorMachine
         fields = [
             'id', 'name', 'hostname', 'ip_address', 'port', 'os_type',
             'labels', 'status', 'description', 'jenkins_node_name',
+            'jenkins_url', 'jenkins_username', 'jenkins_token',
+            'has_jenkins_token',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+        extra_kwargs = {
+            'jenkins_token': {'write_only': True, 'required': False},
+        }
+
+    def get_has_jenkins_token(self, obj):
+        return bool(obj.jenkins_token)
+
+    def update(self, instance, validated_data):
+        token = validated_data.get('jenkins_token')
+        if token is not None and token.strip() == '':
+            validated_data.pop('jenkins_token')
+        return super().update(instance, validated_data)
 
 
 class BuildStepSerializer(serializers.ModelSerializer):
@@ -25,6 +41,8 @@ class BuildPlanSerializer(serializers.ModelSerializer):
         source='created_by.username', read_only=True, default='')
     executor_machine_name = serializers.CharField(
         source='executor_machine.name', read_only=True, default='')
+    executor_machine_jenkins_url = serializers.CharField(
+        source='executor_machine.jenkins_url', read_only=True, default='')
     environment_name = serializers.CharField(
         source='environment.name', read_only=True, default='')
     last_execution_status = serializers.SerializerMethodField()
@@ -34,8 +52,13 @@ class BuildPlanSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description',
             'executor_machine', 'executor_machine_name',
+            'executor_machine_jenkins_url',
             'environment', 'environment_name',
-            'jenkins_job_name', 'jenkins_server_url', 'jenkins_credentials',
+            'jenkins_job_name',
+            'git_repo_url', 'git_branch', 'git_credential_id',
+            'workspace_cleanup',
+            'report_enabled', 'report_command',
+            'environment_variables', 'jenkinsfile_text',
             'cron_expression', 'is_cron_enabled',
             'notification_config', 'trigger_token',
             'status', 'created_by', 'created_by_name',
@@ -86,6 +109,8 @@ class BuildPlanListSerializer(serializers.ModelSerializer):
         source='created_by.username', read_only=True, default='')
     executor_machine_name = serializers.CharField(
         source='executor_machine.name', read_only=True, default='')
+    executor_machine_jenkins_url = serializers.CharField(
+        source='executor_machine.jenkins_url', read_only=True, default='')
     environment_name = serializers.CharField(
         source='environment.name', read_only=True, default='')
     step_count = serializers.IntegerField(
@@ -97,8 +122,13 @@ class BuildPlanListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description',
             'executor_machine', 'executor_machine_name',
+            'executor_machine_jenkins_url',
             'environment', 'environment_name',
-            'jenkins_job_name', 'jenkins_server_url',
+            'jenkins_job_name',
+            'git_repo_url', 'git_branch', 'git_credential_id',
+            'workspace_cleanup',
+            'report_enabled', 'report_command',
+            'environment_variables', 'jenkinsfile_text',
             'cron_expression', 'is_cron_enabled',
             'trigger_token', 'status',
             'created_by', 'created_by_name',
@@ -159,3 +189,10 @@ class BuildExecutionListSerializer(serializers.ModelSerializer):
             'started_at', 'finished_at', 'duration_ms',
             'duration_display',
         ]
+
+
+class EmailTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailTemplate
+        fields = ['id', 'name', 'subject', 'body', 'is_default', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
