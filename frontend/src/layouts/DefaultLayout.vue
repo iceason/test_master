@@ -236,6 +236,7 @@ const menuItems = [
 const testingSubItems = [
   { title: 'common.executorAgents', icon: 'mdi-server-network', value: 'agents', to: '/testing/agents' },
   { title: 'common.buildPlans', icon: 'mdi-clipboard-flow-outline', value: 'buildPlans', to: '/testing/plans' },
+  { title: 'common.executionRecords', icon: 'mdi-history', value: 'executions', to: '/testing/executions' },
 ]
 
 const settingsSubItems = [
@@ -251,6 +252,7 @@ const routeNameToI18nKey: Record<string, string> = {
   ExecutorAgents: 'common.executorAgents',
   BuildPlans: 'common.buildPlans',
   BuildPlanDetail: 'common.buildPlans',
+  ExecutionRecords: 'common.executionRecords',
   Execution: 'execution.title',
   Profile: 'common.profile',
   EmailTemplates: 'common.emailTemplates',

@@ -43,7 +43,7 @@ export const deleteEnvironment = (id: number) => {
 export const executeTestCases = (data: {
   name: string
   case_ids: number[]
-  environment: number
+  environment?: number
   parallel?: boolean
   executor?: string
 }) => {
@@ -91,12 +91,21 @@ export const getExecutionList = (params?: any) => {
 // 执行单个测试用例
 export const executeSingleCase = (data: {
   case_id: number
-  environment: number
+  environment?: number
 }) => {
   return request({
     url: 'executions/execute_single/',
     method: 'post',
     data
+  })
+}
+
+// 获取执行记录统计
+export const getExecutionStats = (params?: any) => {
+  return request({
+    url: 'executions/stats/',
+    method: 'get',
+    params
   })
 }
 

@@ -79,11 +79,22 @@
         <v-spacer></v-spacer>
         <v-col cols="12" md="auto" class="d-flex justify-end">
           <v-btn
+            color="teal"
+            prepend-icon="mdi-play-circle-outline"
+            elevation="2"
+            @click="handleBatchExecute"
+            class="text-none"
+            rounded="lg"
+            :loading="batchPolling"
+          >
+            {{ $t('testcase.actions.batchExecute') }}
+          </v-btn>
+          <v-btn
             color="error"
             prepend-icon="mdi-delete-outline"
             elevation="2"
             @click="handleBatchDelete()"
-            class="text-none"
+            class="text-none ml-2"
             rounded="lg"
           >
             {{ $t('common.batchDelete') }}
@@ -180,6 +191,19 @@
         </template>
 
         <template v-slot:item.actions="{ item }">
+          <v-tooltip location="top" :text="$t('testcase.actions.execute')">
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                icon="mdi-play-circle-outline"
+                variant="text"
+                size="small"
+                color="teal"
+                @click="handleSingleExecute(item)"
+              ></v-btn>
+            </template>
+          </v-tooltip>
+
           <v-tooltip location="top" :text="$t('common.detail')">
             <template v-slot:activator="{ props }">
               <v-btn
@@ -498,6 +522,200 @@
       </v-card>
     </v-dialog>
 
+    <!-- Execution Result Drawer -->
+    <v-navigation-drawer
+      v-model="execDrawer"
+      location="right"
+      temporary
+      :width="540"
+      class="exec-drawer"
+    >
+      <v-toolbar color="teal" density="compact" class="px-2">
+        <v-icon class="mr-2">mdi-play-circle</v-icon>
+        <v-toolbar-title class="text-subtitle-2 font-weight-bold text-white">
+          {{ execDrawerMode === 'single' ? execCaseName : $t('testcase.drawer.batchProgress') }}
+        </v-toolbar-title>
+        <v-spacer />
+        <v-chip v-if="execResult && !execLoading" :color="execStatusColor(execResult.status)" size="small" variant="flat" class="mr-2">
+          {{ $t(`execution.status.${execResult.status}`, execResult.status) }}
+        </v-chip>
+        <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="execDrawer = false" />
+      </v-toolbar>
+
+      <div class="pa-4" style="height: calc(100% - 48px); overflow-y: auto;">
+        <!-- Loading State -->
+        <div v-if="execLoading" class="d-flex flex-column align-center justify-center" style="height: 300px;">
+          <v-progress-circular indeterminate color="teal" size="48" />
+          <div class="text-body-2 text-medium-emphasis mt-4">{{ $t('testcase.drawer.executing') }}</div>
+          <div class="text-caption text-disabled mt-1">{{ $t('testcase.drawer.executingHint') }}</div>
+        </div>
+
+        <!-- Single Result -->
+        <template v-else-if="execDrawerMode === 'single' && execResult">
+          <v-row dense class="mb-3">
+            <v-col cols="auto">
+              <div class="text-caption text-medium-emphasis">{{ $t('execution.detail.statusCode') }}</div>
+              <v-chip :color="execResult.response_status >= 400 ? 'error' : 'success'" size="small" variant="flat">
+                {{ execResult.response_status ?? '-' }}
+              </v-chip>
+            </v-col>
+            <v-col cols="auto">
+              <div class="text-caption text-medium-emphasis">{{ $t('execution.detail.responseTime') }}</div>
+              <span class="text-body-2 font-weight-medium">{{ execResult.response_time_ms ?? '-' }}ms</span>
+            </v-col>
+            <v-col cols="auto">
+              <div class="text-caption text-medium-emphasis">{{ $t('execution.headers.assertions') }}</div>
+              <span class="text-success">{{ execResult.assertions_passed ?? 0 }}</span>
+              <span class="text-medium-emphasis mx-1">/</span>
+              <span :class="(execResult.assertions_failed ?? 0) > 0 ? 'text-error' : 'text-medium-emphasis'">{{ execResult.assertions_failed ?? 0 }}</span>
+            </v-col>
+          </v-row>
+
+          <v-tabs v-model="execTab" density="compact" bg-color="transparent" class="border-b mb-3">
+            <v-tab value="request">{{ $t('execution.tabs.request') }}</v-tab>
+            <v-tab value="response">{{ $t('execution.tabs.response') }}</v-tab>
+            <v-tab value="assertions">{{ $t('execution.tabs.assertions') }}</v-tab>
+            <v-tab v-if="execResult.error_message" value="error">{{ $t('execution.tabs.error') }}</v-tab>
+          </v-tabs>
+
+          <v-window v-model="execTab">
+            <v-window-item value="request">
+              <div class="d-flex align-center mb-2">
+                <v-chip :color="drawerMethodColor(execResult.request_method)" variant="flat" label size="x-small" class="font-weight-bold mr-2">
+                  {{ execResult.request_method }}
+                </v-chip>
+                <code class="text-caption" style="word-break: break-all;">{{ execResult.request_url }}</code>
+              </div>
+              <div class="text-caption font-weight-medium mb-1">{{ $t('execution.detail.requestHeaders') }}</div>
+              <pre class="drawer-json">{{ drawerFormatJson(execResult.request_headers) }}</pre>
+              <div class="text-caption font-weight-medium mt-2 mb-1">{{ $t('execution.detail.requestBody') }}</div>
+              <pre class="drawer-json">{{ drawerFormatJson(execResult.request_body) }}</pre>
+            </v-window-item>
+
+            <v-window-item value="response">
+              <div class="text-caption font-weight-medium mb-1">{{ $t('execution.detail.responseHeaders') }}</div>
+              <pre class="drawer-json">{{ drawerFormatJson(execResult.response_headers) }}</pre>
+              <div class="text-caption font-weight-medium mt-2 mb-1">{{ $t('execution.detail.responseBody') }}</div>
+              <pre class="drawer-json">{{ drawerFormatJson(execResult.response_body) }}</pre>
+            </v-window-item>
+
+            <v-window-item value="assertions">
+              <v-list v-if="execResult.assertion_details?.length" density="compact" lines="two">
+                <v-list-item
+                  v-for="(a, idx) in execResult.assertion_details"
+                  :key="idx"
+                  :prepend-icon="a.passed ? 'mdi-check-circle' : 'mdi-alert-circle'"
+                  :base-color="a.passed ? 'success' : 'error'"
+                >
+                  <v-list-item-title class="text-body-2">{{ a.message }}</v-list-item-title>
+                  <v-list-item-subtitle v-if="a.description" class="text-caption">{{ a.description }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+              <div v-else class="text-center text-medium-emphasis py-6">
+                <v-icon size="32" class="mb-2">mdi-check-all</v-icon>
+                <div class="text-caption">No assertions</div>
+              </div>
+            </v-window-item>
+
+            <v-window-item v-if="execResult.error_message" value="error">
+              <v-alert type="error" density="compact" class="mb-2">{{ execResult.error_message }}</v-alert>
+              <pre v-if="execResult.error_traceback" class="drawer-json">{{ execResult.error_traceback }}</pre>
+            </v-window-item>
+          </v-window>
+        </template>
+
+        <!-- Batch Result -->
+        <template v-else-if="execDrawerMode === 'batch' && batchResult">
+          <!-- Progress -->
+          <div class="mb-3">
+            <div class="d-flex justify-space-between align-center mb-1">
+              <span class="text-body-2 font-weight-medium">
+                {{ batchCompletedCount }} / {{ batchResult.total_cases }}
+              </span>
+              <v-chip
+                :color="batchResult.status === 'completed' ? 'success' : batchResult.status === 'running' ? 'info' : 'grey'"
+                size="x-small" variant="flat"
+              >
+                {{ $t(`execution.batchStatus.${batchResult.status}`, batchResult.status) }}
+              </v-chip>
+            </div>
+            <v-progress-linear
+              :model-value="batchResult.total_cases > 0 ? (batchCompletedCount / batchResult.total_cases) * 100 : 0"
+              :indeterminate="batchResult.status === 'pending'"
+              color="teal"
+              height="6"
+              rounded
+            />
+          </div>
+
+          <v-row dense class="mb-3">
+            <v-col cols="4">
+              <v-card variant="tonal" color="success" class="rounded-lg">
+                <v-card-text class="text-center py-2">
+                  <div class="text-h6">{{ batchResult.passed_cases }}</div>
+                  <div class="text-caption">{{ $t('execution.stats.passed') }}</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="4">
+              <v-card variant="tonal" color="error" class="rounded-lg">
+                <v-card-text class="text-center py-2">
+                  <div class="text-h6">{{ batchResult.failed_cases }}</div>
+                  <div class="text-caption">{{ $t('execution.stats.failed') }}</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+            <v-col cols="4">
+              <v-card variant="tonal" color="warning" class="rounded-lg">
+                <v-card-text class="text-center py-2">
+                  <div class="text-h6">{{ batchResult.error_cases }}</div>
+                  <div class="text-caption">{{ $t('execution.stats.error') }}</div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <v-list v-if="batchResult.execution_records?.length" density="compact" lines="two">
+            <v-list-item
+              v-for="rec in batchResult.execution_records"
+              :key="rec.id"
+              :prepend-icon="rec.status === 'passed' ? 'mdi-check-circle' : rec.status === 'failed' ? 'mdi-close-circle' : 'mdi-alert-circle'"
+              :base-color="execStatusColor(rec.status)"
+              @click="openBatchRecordDetail(rec)"
+              class="rounded-lg mb-1"
+            >
+              <v-list-item-title class="text-body-2">{{ rec.test_case_name }}</v-list-item-title>
+              <v-list-item-subtitle class="text-caption">
+                {{ rec.request_method }} {{ rec.request_url }} · {{ rec.response_time_ms ?? '-' }}ms
+              </v-list-item-subtitle>
+              <template #append>
+                <v-chip :color="execStatusColor(rec.status)" size="x-small" variant="flat">
+                  {{ $t(`execution.status.${rec.status}`, rec.status) }}
+                </v-chip>
+              </template>
+            </v-list-item>
+          </v-list>
+        </template>
+
+        <!-- Footer -->
+        <div v-if="!execLoading" class="mt-4 pt-3 border-t d-flex justify-space-between align-center">
+          <v-btn
+            variant="text"
+            color="primary"
+            size="small"
+            prepend-icon="mdi-history"
+            class="text-none"
+            @click="goToHistory"
+          >
+            {{ $t('testcase.drawer.viewHistory') }}
+          </v-btn>
+          <v-btn variant="tonal" size="small" class="text-none" @click="execDrawer = false">
+            {{ $t('common.close') }}
+          </v-btn>
+        </div>
+      </div>
+    </v-navigation-drawer>
+
     <v-snackbar v-model="snackbar" :color="snackbarColor" location="top right">
       {{ snackbarText }}
       <template v-slot:actions>
@@ -510,16 +728,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { getTestCasesPaginated, createTestCase, updateTestCase, deleteTestCase, exportTestCases, batchDeleteTestCases } from '@/api/testcase'
 import { getInterfaces } from '@/api/interface'
 import { getDirectories } from '@/api/directory'
 import { getCategories } from '@/api/category'
+import { executeSingleCase, executeTestCases, getBatchDetail } from '@/api/execution'
 import type { TestCase } from '@/api/testcase'
 import type { Interface } from '@/api/interface'
 import type { Directory } from '@/api/directory'
 import type { TestCaseCategory } from '@/api/category'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const loading = ref(false)
 const dialog = ref(false)
@@ -548,6 +769,22 @@ const filters = ref({
   interface: null as number | null,
   test_type: null as string | null,
   strategy: null as string | null
+})
+
+// Execution drawer state
+const execDrawer = ref(false)
+const execDrawerMode = ref<'single' | 'batch'>('single')
+const execLoading = ref(false)
+const execResult = ref<any>(null)
+const execCaseName = ref('')
+const execTab = ref('request')
+const batchResult = ref<any>(null)
+const batchPolling = ref(false)
+let pollTimerId: ReturnType<typeof setTimeout> | null = null
+
+const batchCompletedCount = computed(() => {
+  if (!batchResult.value) return 0
+  return (batchResult.value.passed_cases || 0) + (batchResult.value.failed_cases || 0) + (batchResult.value.error_cases || 0)
 })
 
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
@@ -939,6 +1176,118 @@ const showMsg = (text: string, color = 'success') => {
   snackbar.value = true
 }
 
+// --- Execution handlers ---
+
+const handleSingleExecute = async (item: TestCase) => {
+  execDrawerMode.value = 'single'
+  execCaseName.value = item.name
+  execResult.value = null
+  execTab.value = 'request'
+  execLoading.value = true
+  execDrawer.value = true
+
+  try {
+    const res = await executeSingleCase({ case_id: item.id })
+    execResult.value = (res as any).result || res
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || t('common.error')
+    showMsg(msg, 'error')
+    execResult.value = { status: 'error', error_message: msg, request_method: '', request_url: '', request_headers: {}, request_body: {}, response_headers: {}, response_body: {}, assertion_details: [] }
+  } finally {
+    execLoading.value = false
+  }
+}
+
+const stopPolling = () => {
+  if (pollTimerId) {
+    clearTimeout(pollTimerId)
+    pollTimerId = null
+  }
+  batchPolling.value = false
+}
+
+const handleBatchExecute = async () => {
+  if (selectedIds.value.length === 0) {
+    showMsg(t('common.noSelectedItems'), 'warning')
+    return
+  }
+
+  stopPolling()
+  execDrawerMode.value = 'batch'
+  batchResult.value = null
+  execLoading.value = true
+  execDrawer.value = true
+  batchPolling.value = true
+
+  try {
+    const res = await executeTestCases({
+      name: `Batch-${new Date().toLocaleString()}`,
+      case_ids: selectedIds.value,
+    })
+    const batchDbId = (res as any).batch_db_id
+    execLoading.value = false
+    pollBatch(batchDbId)
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || t('common.error')
+    showMsg(msg, 'error')
+    execLoading.value = false
+    batchPolling.value = false
+  }
+}
+
+const pollBatch = async (batchId: number) => {
+  const doPoll = async () => {
+    if (!batchPolling.value) return
+    try {
+      const batch = await getBatchDetail(batchId)
+      batchResult.value = batch
+      if ((batch as any).status === 'completed' || (batch as any).status === 'cancelled') {
+        batchPolling.value = false
+        pollTimerId = null
+      } else {
+        pollTimerId = setTimeout(doPoll, 1000)
+      }
+    } catch {
+      batchPolling.value = false
+      pollTimerId = null
+    }
+  }
+  doPoll()
+}
+
+watch(execDrawer, (open) => {
+  if (!open) stopPolling()
+})
+
+const openBatchRecordDetail = (rec: any) => {
+  execDrawerMode.value = 'single'
+  execCaseName.value = rec.test_case_name
+  execResult.value = rec
+  execTab.value = 'request'
+}
+
+const goToHistory = () => {
+  const query: Record<string, string> = {}
+  if (filters.value.project) query.project = String(filters.value.project)
+  if (filters.value.interface) query.interface = String(filters.value.interface)
+  router.push({ name: 'ExecutionRecords', query })
+}
+
+const execStatusColor = (s: string) => {
+  const m: Record<string, string> = { passed: 'success', failed: 'error', error: 'warning', pending: 'grey', running: 'info' }
+  return m[s] || 'grey'
+}
+
+const drawerMethodColor = (m: string) => {
+  const c: Record<string, string> = { GET: 'green', POST: 'blue', PUT: 'orange', DELETE: 'red', PATCH: 'purple' }
+  return c[m] || 'grey'
+}
+
+const drawerFormatJson = (obj: any) => {
+  if (!obj) return '{}'
+  try { return typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2) } catch { return String(obj) }
+}
+
 onMounted(() => {
   loadData()
 })
@@ -951,6 +1300,20 @@ onMounted(() => {
 :deep(.v-data-table td) {
   white-space: normal !important;
   word-break: break-word;
+}
+.drawer-json {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
 }
 
 .detail-field {

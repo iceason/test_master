@@ -38,7 +38,7 @@
             <v-icon size="22" color="teal">mdi-server-network</v-icon>
           </v-avatar>
           <div class="meta-text">
-            <div class="meta-label">执行机器</div>
+            <div class="meta-label">{{ t('testing.plans.detail.executorMachine') }}</div>
             <div class="meta-value">{{ plan.executor_machine_name || 'Jenkins Master' }}</div>
           </div>
         </div>
@@ -58,13 +58,13 @@
             <v-icon size="22" :color="plan.is_cron_enabled ? 'orange' : 'grey'">mdi-timer-cog-outline</v-icon>
           </v-avatar>
           <div class="meta-text">
-            <div class="meta-label">定时任务</div>
+            <div class="meta-label">{{ t('testing.plans.detail.scheduledTask') }}</div>
             <div class="meta-value">
               <template v-if="plan.is_cron_enabled">
                 <v-icon size="10" color="success" class="mr-1">mdi-circle</v-icon>
                 {{ plan.cron_expression }}
               </template>
-              <span v-else class="text-medium-emphasis">未启用</span>
+              <span v-else class="text-medium-emphasis">{{ t('testing.plans.detail.notEnabled') }}</span>
             </div>
           </div>
         </div>
@@ -74,8 +74,8 @@
             <v-icon size="22" color="deep-purple">mdi-format-list-numbered</v-icon>
           </v-avatar>
           <div class="meta-text">
-            <div class="meta-label">构建步骤</div>
-            <div class="meta-value">{{ (plan.steps || []).length }} 步</div>
+            <div class="meta-label">{{ t('testing.plans.detail.buildSteps') }}</div>
+            <div class="meta-value">{{ (plan.steps || []).length }} {{ t('testing.plans.detail.stepsUnit') }}</div>
           </div>
         </div>
         <div class="meta-divider" />
@@ -84,7 +84,7 @@
             <v-icon size="22" color="cyan-darken-2">mdi-history</v-icon>
           </v-avatar>
           <div class="meta-text">
-            <div class="meta-label">最近构建</div>
+            <div class="meta-label">{{ t('testing.plans.detail.latestBuild') }}</div>
             <div class="meta-value">
               <template v-if="latestExec">
                 <v-chip :color="getExecStatusColor(latestExec.status)" size="x-small" variant="flat" class="mr-1">
@@ -92,7 +92,7 @@
                 </v-chip>
                 {{ formatDate(latestExec.started_at) }}
               </template>
-              <span v-else class="text-medium-emphasis">暂无</span>
+              <span v-else class="text-medium-emphasis">{{ t('testing.plans.detail.noRecord') }}</span>
             </div>
           </div>
         </div>
@@ -106,18 +106,18 @@
           <div class="ext-section">
             <div class="ext-title">
               <v-icon size="16" color="teal" class="mr-2">mdi-source-branch</v-icon>
-              代码仓库
+              {{ t('testing.plans.detail.codeRepo') }}
             </div>
             <div class="ext-row">
-              <span class="ext-key">仓库地址</span>
+              <span class="ext-key">{{ t('testing.plans.detail.repoUrl') }}</span>
               <code class="ext-val">{{ plan.git_repo_url }}</code>
             </div>
             <div class="ext-row">
-              <span class="ext-key">分支</span>
+              <span class="ext-key">{{ t('testing.plans.detail.branch') }}</span>
               <v-chip size="x-small" color="info" variant="flat">{{ plan.git_branch || 'main' }}</v-chip>
             </div>
             <div v-if="plan.git_credential_id" class="ext-row">
-              <span class="ext-key">凭证 ID</span>
+              <span class="ext-key">{{ t('testing.plans.detail.credentialId') }}</span>
               <code class="ext-val">{{ plan.git_credential_id }}</code>
             </div>
           </div>
@@ -126,14 +126,14 @@
           <div class="ext-section">
             <div class="ext-title">
               <v-icon size="16" color="teal" class="mr-2">mdi-file-chart-outline</v-icon>
-              报告配置
+              {{ t('testing.plans.detail.reportConfig') }}
             </div>
             <div class="ext-row">
-              <span class="ext-key">报告</span>
-              <v-chip size="x-small" color="success" variant="flat">已启用</v-chip>
+              <span class="ext-key">{{ t('testing.plans.detail.report') }}</span>
+              <v-chip size="x-small" color="success" variant="flat">{{ t('testing.plans.detail.enabled') }}</v-chip>
             </div>
             <div v-if="plan.report_command" class="ext-row">
-              <span class="ext-key">命令</span>
+              <span class="ext-key">{{ t('testing.plans.detail.command') }}</span>
               <code class="ext-val">{{ plan.report_command }}</code>
             </div>
           </div>
@@ -142,7 +142,7 @@
           <div class="ext-section">
             <div class="ext-title">
               <v-icon size="16" color="teal" class="mr-2">mdi-variable</v-icon>
-              环境变量
+              {{ t('testing.plans.detail.envVars') }}
             </div>
             <div class="env-chips">
               <v-chip v-for="ev in plan.environment_variables" :key="ev.key" size="small" variant="outlined" color="teal" class="mr-2 mb-1">
@@ -160,9 +160,9 @@
     <v-sheet class="rounded-xl" elevation="0" style="border: 1px solid rgba(0,0,0,0.06);">
       <div class="d-flex align-center px-5 pt-4 pb-2">
         <v-icon size="20" color="teal" class="mr-2">mdi-history</v-icon>
-        <span class="text-subtitle-1 font-weight-bold">执行记录</span>
+        <span class="text-subtitle-1 font-weight-bold">{{ t('testing.plans.detail.execHistory') }}</span>
         <v-spacer />
-        <v-chip size="x-small" variant="tonal" color="default">{{ executions.length }} 条</v-chip>
+        <v-chip size="x-small" variant="tonal" color="default">{{ executions.length }} {{ t('testing.plans.detail.recordUnit') }}</v-chip>
       </div>
       <v-data-table
         :headers="execHeaders" :items="executions" :loading="loadingExec" hover
@@ -184,17 +184,17 @@
         </template>
         <template v-slot:item.actions="{ item }">
           <div class="d-flex" @click.stop>
-            <v-tooltip text="查看日志" location="top">
+            <v-tooltip :text="t('testing.plans.detail.viewLogs')" location="top">
               <template v-slot:activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-text-long" size="small" variant="text" color="info" @click="showLogs(item)" />
               </template>
             </v-tooltip>
-            <v-tooltip text="查看报告" location="top">
+            <v-tooltip :text="t('testing.plans.detail.viewReport')" location="top">
               <template v-slot:activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-file-chart-outline" size="small" variant="text" color="primary" @click="showReport(item)" />
               </template>
             </v-tooltip>
-            <v-tooltip v-if="item.status === 'running' || item.status === 'pending'" text="取消执行" location="top">
+            <v-tooltip v-if="item.status === 'running' || item.status === 'pending'" :text="t('testing.plans.detail.cancelExec')" location="top">
               <template v-slot:activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-stop-circle-outline" size="small" variant="text" color="error" @click="confirmCancelExec(item)" />
               </template>
@@ -204,9 +204,9 @@
         <template v-slot:no-data>
           <div class="text-center py-12 text-medium-emphasis">
             <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-clock-fast</v-icon>
-            <div class="text-body-2">暂无执行记录</div>
+            <div class="text-body-2">{{ t('testing.plans.detail.noExecRecord') }}</div>
             <v-btn color="teal" variant="tonal" class="text-none mt-3" size="small" prepend-icon="mdi-play-circle-outline" @click="confirmTriggerDialog = true">
-              启动首次构建
+              {{ t('testing.plans.detail.startFirstBuild') }}
             </v-btn>
           </div>
         </template>
@@ -356,13 +356,13 @@ const hasEnvVars = computed(() => {
 
 const execHeaders = computed(() => [
   { title: '#', key: 'id', width: 60 },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '触发方式', key: 'trigger_type', width: 120 },
-  { title: '触发人', key: 'triggered_by' },
+  { title: t('testing.plans.tableHeaders.status'), key: 'status', width: 100 },
+  { title: t('testing.plans.tableHeaders.triggerType'), key: 'trigger_type', width: 120 },
+  { title: t('testing.plans.tableHeaders.triggeredBy'), key: 'triggered_by' },
   { title: 'Jenkins #', key: 'jenkins_build_number', width: 100 },
-  { title: '耗时', key: 'duration_display', width: 100 },
-  { title: '开始时间', key: 'started_at' },
-  { title: '操作', key: 'actions', sortable: false, width: 130 },
+  { title: t('testing.plans.tableHeaders.duration'), key: 'duration_display', width: 100 },
+  { title: t('testing.plans.tableHeaders.startedAt'), key: 'started_at' },
+  { title: t('testing.plans.tableHeaders.actions'), key: 'actions', sortable: false, width: 130 },
 ])
 
 const junitHeaders = [
@@ -493,7 +493,7 @@ const downloadLog = async () => {
     a.download = `build_${selectedExec.value.id}_log.txt`
     a.click()
     window.URL.revokeObjectURL(url)
-  } catch (e: any) { snackbar.notify('Download failed', 'error') }
+  } catch (e: any) { snackbar.notify(t('testing.plans.detail.downloadFailed'), 'error') }
 }
 
 const showReport = async (item: any) => {

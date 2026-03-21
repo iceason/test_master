@@ -128,6 +128,12 @@ class Environment(models.Model):
     """测试环境配置"""
     name = models.CharField(max_length=50, unique=True, verbose_name="环境名称")
     code = models.CharField(max_length=20, unique=True, verbose_name="环境代码")
+    project = models.ForeignKey(
+        Directory, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='environments',
+        verbose_name="关联项目",
+        limit_choices_to={'parent__isnull': True},
+    )
     base_url = models.URLField(verbose_name="基础URL")
     token = models.CharField(max_length=500, blank=True, default='', verbose_name="Token")
     description = models.TextField(blank=True, verbose_name="描述")

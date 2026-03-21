@@ -47,7 +47,7 @@
 
         <template v-slot:item.actions="{ item }">
           <div class="d-flex align-center" @click.stop>
-            <v-tooltip location="top" :text="isRunning(item) ? '停止构建' : $t('testing.plans.trigger')">
+            <v-tooltip location="top" :text="isRunning(item) ? $t('testing.plans.stopBuild') : $t('testing.plans.trigger')">
               <template v-slot:activator="{ props }">
                 <v-btn
                   v-bind="props"
@@ -148,7 +148,7 @@
                       </v-col>
                     </v-row>
                     <v-btn size="small" color="primary" variant="tonal" prepend-icon="mdi-plus" @click="form.environment_variables.push({ key: '', value: '' })" class="text-none mt-2">
-                      添加变量
+                      {{ $t('testing.plans.addVariable') }}
                     </v-btn>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
@@ -156,7 +156,7 @@
                 <!-- 定时任务 -->
                 <v-expansion-panel value="cron">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-clock-outline</v-icon>定时任务
+                    <v-icon start size="18">mdi-clock-outline</v-icon>{{ $t('testing.plans.cronField') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-switch v-model="form.is_cron_enabled" :label="$t('testing.plans.fields.isCronEnabled')" color="primary" density="compact" hide-details class="mb-3" />
@@ -208,7 +208,7 @@
                   <v-icon size="20" color="white">mdi-pipe</v-icon>
                 </div>
                 <span class="text-subtitle-2 font-weight-bold ml-3">{{ $t('testing.steps.title') }}</span>
-                <v-chip size="x-small" color="primary" variant="tonal" class="ml-2" pill>{{ form.steps.length }} 步骤</v-chip>
+                <v-chip size="x-small" color="primary" variant="tonal" class="ml-2" pill>{{ form.steps.length }} {{ $t('testing.plans.stepsCount') }}</v-chip>
               </div>
               <v-btn-toggle v-model="editorMode" mandatory density="compact" rounded="lg" color="primary" variant="outlined">
                 <v-btn value="visual" size="small" class="text-none">
@@ -327,10 +327,10 @@ const statusOptions = computed(() => [
   { title: t('testing.plans.status.active'), value: 'active' },
   { title: t('testing.plans.status.disabled'), value: 'disabled' },
 ])
-const planStatusOptions = [
-  { title: 'Active', value: 'active' },
-  { title: 'Disabled', value: 'disabled' },
-]
+const planStatusOptions = computed(() => [
+  { title: t('testing.plans.status.active'), value: 'active' },
+  { title: t('testing.plans.status.disabled'), value: 'disabled' },
+])
 const webhookTypes = [
   { title: 'DingTalk', value: 'dingtalk' },
   { title: 'Feishu', value: 'feishu' },
@@ -491,8 +491,8 @@ watch(editorMode, async (newMode, oldMode) => {
   } else if (newMode === 'visual' && oldMode === 'text') {
     if (textDirty.value) {
       const ok = await showConfirm(
-        '切换编辑器',
-        '文本编辑器中存在未保存的修改，切换到图形编辑器后无法解析的内容可能丢失，是否继续？',
+        t('testing.pipeline.switchTitle'),
+        t('testing.pipeline.switchUnsavedWarn'),
         'warning',
         'mdi-alert-circle-outline',
       )
@@ -525,11 +525,11 @@ const saveItem = async () => {
       if (!expandedPanels.value.includes('basic')) {
         expandedPanels.value = ['basic', ...expandedPanels.value]
       }
-      snackbar.notify('请填写必填字段', 'warning')
+      snackbar.notify(t('testing.plans.fillRequired'), 'warning')
       return
     }
   } catch {
-    snackbar.notify('表单验证异常，请检查必填项', 'warning')
+    snackbar.notify(t('testing.plans.formValidationError'), 'warning')
     return
   }
   saving.value = true
@@ -633,12 +633,12 @@ const triggerBuild = async (item: any) => {
 }
 
 const stopBuild = async (item: any) => {
-  const ok = await showConfirm('停止构建', '确定要停止当前正在运行的构建吗？', 'error', 'mdi-stop-circle-outline')
+  const ok = await showConfirm(t('testing.plans.stopBuild'), t('testing.plans.stopBuildConfirm'), 'error', 'mdi-stop-circle-outline')
   if (!ok) return
   item._stopping = true
   try {
     await stopBuildPlan(item.id)
-    snackbar.notify('已发送停止指令', 'success')
+    snackbar.notify(t('testing.plans.stopSent'), 'success')
     loadData()
   } catch (e: any) {
     const msg = e?.response?.data?.error || e?.response?.data?.detail || e?.message || t('common.error')

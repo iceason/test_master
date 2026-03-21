@@ -61,21 +61,26 @@ class TestCaseSerializer(serializers.ModelSerializer):
 
 class EnvironmentSerializer(serializers.ModelSerializer):
     """环境配置序列化器"""
-    
+    project_name = serializers.CharField(source='project.name', read_only=True, default=None)
+
     class Meta:
         model = Environment
-        fields = ['id', 'name', 'code', 'base_url', 'token', 'description', 'config', 'is_active', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'code', 'project', 'project_name', 'base_url', 'token', 'description', 'config', 'is_active', 'created_at', 'updated_at']
 
 
 class TestExecutionSerializer(serializers.ModelSerializer):
     """测试执行记录序列化器"""
     test_case_name = serializers.CharField(source='test_case.name', read_only=True)
     test_case_interface = serializers.CharField(source='test_case.interface.name', read_only=True)
+    project_name = serializers.CharField(source='test_case.project.name', read_only=True, default=None)
+    project_id = serializers.IntegerField(source='test_case.project_id', read_only=True, default=None)
+    interface_id = serializers.IntegerField(source='test_case.interface_id', read_only=True)
     
     class Meta:
         model = TestExecution
         fields = [
             'id', 'execution_id', 'test_case', 'test_case_name', 'test_case_interface',
+            'project_name', 'project_id', 'interface_id',
             'batch', 'status', 'request_url', 'request_method', 'request_headers',
             'request_body', 'response_status', 'response_headers', 'response_body',
             'response_time_ms', 'assertions_passed', 'assertions_failed',

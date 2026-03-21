@@ -481,9 +481,9 @@ class TestExecutionBatchViewSet(viewsets.ModelViewSet):
         {
             "name": "批次名称",
             "case_ids": [1, 2, 3],
-            "environment": 1,  # 环境ID
-            "parallel": false,  # 是否并发执行
-            "executor": "用户名"  # 可选
+            "environment": 1,  # 可选，不传则自动匹配
+            "parallel": false,
+            "executor": "用户名"
         }
         """
         case_ids = request.data.get('case_ids', [])
@@ -495,10 +495,16 @@ class TestExecutionBatchViewSet(viewsets.ModelViewSet):
         if not case_ids:
             return Response({'error': '未选择测试用例'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # 自动匹配环境
         if not environment_id:
-            return Response({'error': '未指定测试环境'}, status=status.HTTP_400_BAD_REQUEST)
+            first_case = TestCase.objects.select_related('project').filter(id__in=case_ids).first()
+            if first_case and first_case.project:
+                env = Environment.objects.filter(project=first_case.project, is_active=True).first()
+                if env:
+                    environment_id = env.id
+            if not environment_id:
+                return Response({'error': '未找到该项目关联的活跃环境，请先在环境管理中配置'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # 验证环境是否存在
         try:
             environment = Environment.objects.get(id=environment_id, is_active=True)
         except Environment.DoesNotExist:
@@ -530,12 +536,15 @@ class TestExecutionBatchViewSet(viewsets.ModelViewSet):
                     'message': '测试执行任务已提交'
                 }, status=status.HTTP_202_ACCEPTED)
             else:
-                # 回退到线程执行
+                # 回退到线程执行（绕过 Celery Task.__call__，直接调用底层函数）
                 def run_in_thread():
-                    from .executor_tasks import execute_test_cases_task
-                    execute_test_cases_task(None, case_ids, environment_id, batch.id, parallel)
+                    from .executor_tasks import run_batch_execution
+                    try:
+                        run_batch_execution(case_ids, environment_id, batch.id, parallel)
+                    except Exception as exc:
+                        _logger.error("Batch %s thread execution failed: %s", batch.id, exc, exc_info=True)
                 
-                thread = threading.Thread(target=run_in_thread)
+                thread = threading.Thread(target=run_in_thread, daemon=True)
                 thread.start()
                 
                 return Response({
@@ -567,13 +576,34 @@ class TestExecutionBatchViewSet(viewsets.ModelViewSet):
 
 class TestExecutionViewSet(viewsets.ModelViewSet):
     """测试执行记录管理"""
-    queryset = TestExecution.objects.all()
+    queryset = TestExecution.objects.select_related('test_case', 'test_case__interface', 'test_case__project').all()
     serializer_class = TestExecutionSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    filterset_fields = ['status', 'test_case', 'batch']
+    filterset_fields = {
+        'status': ['exact'],
+        'test_case': ['exact'],
+        'batch': ['exact'],
+        'test_case__project': ['exact'],
+        'test_case__interface': ['exact'],
+        'started_at': ['gte', 'lte'],
+    }
     search_fields = ['test_case__name', 'request_url']
     ordering_fields = ['id', 'started_at', 'finished_at', 'duration_ms', 'response_time_ms']
     ordering = ['-started_at']
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """获取执行记录统计信息（支持与列表相同的筛选参数）"""
+        qs = self.filter_queryset(self.get_queryset())
+        from django.db.models import Count, Avg, Q
+        agg = qs.aggregate(
+            total=Count('id'),
+            passed=Count('id', filter=Q(status='passed')),
+            failed=Count('id', filter=Q(status='failed')),
+            error=Count('id', filter=Q(status='error')),
+            avg_response_time=Avg('response_time_ms'),
+        )
+        return Response(agg)
     
     @action(detail=False, methods=['post'])
     def execute_single(self, request):
@@ -583,7 +613,7 @@ class TestExecutionViewSet(viewsets.ModelViewSet):
         请求体:
         {
             "case_id": 1,
-            "environment": 1
+            "environment": 1  // 可选，不传则自动匹配项目环境
         }
         """
         case_id = request.data.get('case_id')
@@ -592,8 +622,18 @@ class TestExecutionViewSet(viewsets.ModelViewSet):
         if not case_id:
             return Response({'error': '未指定测试用例'}, status=status.HTTP_400_BAD_REQUEST)
         
+        # 自动匹配环境
         if not environment_id:
-            return Response({'error': '未指定测试环境'}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                test_case = TestCase.objects.select_related('project').get(id=case_id)
+                if test_case.project:
+                    env = Environment.objects.filter(project=test_case.project, is_active=True).first()
+                    if env:
+                        environment_id = env.id
+                if not environment_id:
+                    return Response({'error': '未找到该项目关联的活跃环境，请先在环境管理中配置'}, status=status.HTTP_400_BAD_REQUEST)
+            except TestCase.DoesNotExist:
+                return Response({'error': '测试用例不存在'}, status=status.HTTP_404_NOT_FOUND)
         
         try:
             if CELERY_AVAILABLE:
@@ -606,29 +646,33 @@ class TestExecutionViewSet(viewsets.ModelViewSet):
                     'message': '测试用例执行任务已提交'
                 }, status=status.HTTP_202_ACCEPTED)
             else:
-                # 同步执行
-                from .models import TestCase, Environment
+                from .models import TestCase as TC, Environment as Env
                 from .executor.core import TestExecutor, ExecutorConfig
                 
-                test_case = TestCase.objects.get(id=case_id)
-                environment = Environment.objects.get(id=environment_id)
+                tc = TC.objects.get(id=case_id)
+                environment = Env.objects.get(id=environment_id)
+                
+                extra_config = dict(environment.config) if environment.config else {}
+                default_headers = extra_config.pop('default_headers', {})
+                if environment.token:
+                    default_headers['Authorization'] = f'Bearer {environment.token}'
                 
                 executor_config = ExecutorConfig(
                     environment=environment.code,
                     base_url=environment.base_url,
-                    **environment.config
+                    default_headers=default_headers,
+                    **extra_config
                 )
                 executor = TestExecutor(executor_config)
                 
                 env_config = {
                     'base_url': environment.base_url,
-                    **environment.config
+                    **extra_config
                 }
-                result = executor.execute_test_case(test_case, env_config)
+                result = executor.execute_test_case(tc, env_config)
                 
-                # 保存执行结果
                 execution = TestExecution.objects.create(
-                    test_case=test_case,
+                    test_case=tc,
                     status=result.status,
                     request_url=result.request_url,
                     request_method=result.request_method,
@@ -649,7 +693,7 @@ class TestExecutionViewSet(viewsets.ModelViewSet):
                 )
                 
                 return Response({
-                    'execution_id': execution.execution_id,
+                    'execution_id': str(execution.execution_id),
                     'status': execution.status,
                     'result': TestExecutionSerializer(execution).data
                 }, status=status.HTTP_200_OK)

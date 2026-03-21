@@ -64,6 +64,12 @@ const routes = [
         meta: { title: 'Build Plan Detail' }
       },
       {
+        path: 'testing/executions',
+        name: 'ExecutionRecords',
+        component: () => import('@/views/testing/executions/index.vue'),
+        meta: { title: 'Execution Records' }
+      },
+      {
         path: 'execution',
         name: 'Execution',
         component: () => import('@/views/execution/index.vue'),
