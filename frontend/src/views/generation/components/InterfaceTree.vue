@@ -2,14 +2,13 @@
   <div class="d-flex flex-column fill-height">
     <!-- 头部操作栏 -->
     <div class="pa-4 d-flex align-center border-b">
-      <span class="text-subtitle-1 font-weight-bold">{{ $t('common.interfaces') }}</span>
+      <span class="text-h6 font-weight-bold">{{ $t('common.interfaces') }}</span>
       <v-spacer></v-spacer>
       <v-btn
         icon="mdi-folder-plus"
         variant="text"
         size="small"
         color="primary"
-        rounded="lg"
         @click="openDirDialog()"
         :title="$t('generation.addRootDirectory')"
       ></v-btn>
@@ -18,7 +17,6 @@
         variant="text"
         size="small"
         color="grey"
-        rounded="lg"
         class="ml-1"
         @click="loadData"
         :title="$t('common.refresh')"
@@ -54,13 +52,13 @@
     <!-- 目录 Dialog -->
     <v-dialog v-model="dirDialog" max-width="500">
       <v-card class="rounded-xl">
-        <v-card-title class="bg-primary text-white pa-4">
-          <span class="text-h6">
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">
             {{ dirForm.id ? $t('generation.editDirectory') : 
                (dirLevel === 1 ? $t('generation.addProject') : 
                 (dirLevel === 2 ? $t('generation.addModule') : $t('generation.addSubDirectory'))) }}
-          </span>
-        </v-card-title>
+          </v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4">
           <v-text-field
             v-model="dirForm.name"
@@ -74,8 +72,8 @@
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" rounded="lg" class="text-none" @click="dirDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" variant="flat" rounded="lg" class="text-none ml-3" @click="saveDirectory">{{ $t('common.save') }}</v-btn>
+          <v-btn color="grey-darken-1" variant="text" class="text-none" @click="dirDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" variant="flat" class="text-none ml-3" @click="saveDirectory">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -83,9 +81,9 @@
     <!-- 接口 Dialog -->
     <v-dialog v-model="interfaceDialog" max-width="600">
       <v-card class="rounded-xl">
-        <v-card-title class="bg-primary text-white pa-4">
-          <span class="text-h6">{{ $t('generation.addInterface') }}</span>
-        </v-card-title>
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('generation.addInterface') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4">
           <v-container class="pa-0">
             <v-row dense>
@@ -129,8 +127,8 @@
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" rounded="lg" class="text-none" @click="interfaceDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" variant="flat" rounded="lg" class="text-none ml-3" @click="saveInterface">{{ $t('common.save') }}</v-btn>
+          <v-btn color="grey-darken-1" variant="text" class="text-none" @click="interfaceDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" variant="flat" class="text-none ml-3" @click="saveInterface">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -138,9 +136,9 @@
     <!-- 移动接口 Dialog -->
     <v-dialog v-model="moveDialog" max-width="500">
       <v-card class="rounded-xl">
-        <v-card-title class="bg-primary text-white pa-4">
-          <span class="text-h6">{{ $t('generation.moveInterface') }}</span>
-        </v-card-title>
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('generation.moveInterface') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4">
           <v-select
             v-model="moveTargetId"
@@ -154,8 +152,8 @@
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn color="grey-darken-1" variant="text" rounded="lg" class="text-none" @click="moveDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" variant="flat" rounded="lg" class="text-none ml-3" @click="saveMove">{{ $t('common.save') }}</v-btn>
+          <v-btn color="grey-darken-1" variant="text" class="text-none" @click="moveDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" variant="flat" class="text-none ml-3" @click="saveMove">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -163,18 +161,18 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="400px">
       <v-card class="rounded-xl">
-        <v-card-title class="text-h6 pa-4 bg-error text-white">
-          {{ $t('common.delete') }}
-        </v-card-title>
+        <v-toolbar color="error" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('common.delete') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4 text-body-1">
           {{ deleteItemName ? $t('common.confirmDelete', { name: deleteItemName }) : '' }}
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="deleteDialog = false">
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="deleteDialog = false">
             {{ $t('common.cancel') }}
           </v-btn>
-          <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmDelete">
+          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmDelete">
             {{ $t('common.delete') }}
           </v-btn>
         </v-card-actions>

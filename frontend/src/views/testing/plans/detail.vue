@@ -20,10 +20,10 @@
           <div v-if="plan.description" class="text-body-2 text-medium-emphasis mt-1">{{ plan.description }}</div>
         </div>
         <div class="d-flex align-center ga-2">
-          <v-btn color="default" variant="tonal" prepend-icon="mdi-refresh" @click="refreshStatus" :loading="refreshing" class="text-none" rounded="lg" size="small">
+          <v-btn color="default" variant="tonal" prepend-icon="mdi-refresh" @click="refreshStatus" :loading="refreshing" class="text-none" size="small">
             {{ $t('common.refresh') }}
           </v-btn>
-          <v-btn color="teal" prepend-icon="mdi-play-circle-outline" @click="confirmTriggerDialog = true" :loading="triggering" class="text-none" rounded="lg" variant="flat">
+          <v-btn color="teal" prepend-icon="mdi-play-circle-outline" @click="confirmTriggerDialog = true" :loading="triggering" class="text-none" variant="flat">
             {{ $t('testing.plans.trigger') }}
           </v-btn>
         </div>
@@ -34,7 +34,7 @@
     <v-sheet class="detail-meta rounded-xl mb-5" elevation="0">
       <div class="meta-grid">
         <div class="meta-item">
-          <v-avatar size="40" color="teal" variant="tonal" rounded="lg" class="meta-icon">
+          <v-avatar size="40" color="teal" variant="tonal" class="meta-icon">
             <v-icon size="22" color="teal">mdi-server-network</v-icon>
           </v-avatar>
           <div class="meta-text">
@@ -44,7 +44,7 @@
         </div>
         <div class="meta-divider" />
         <div class="meta-item">
-          <v-avatar size="40" color="blue" variant="tonal" rounded="lg" class="meta-icon">
+          <v-avatar size="40" color="blue" variant="tonal" class="meta-icon">
             <v-icon size="22" color="blue">mdi-pipe</v-icon>
           </v-avatar>
           <div class="meta-text">
@@ -54,7 +54,7 @@
         </div>
         <div class="meta-divider" />
         <div class="meta-item">
-          <v-avatar size="40" :color="plan.is_cron_enabled ? 'orange' : 'grey'" variant="tonal" rounded="lg" class="meta-icon">
+          <v-avatar size="40" :color="plan.is_cron_enabled ? 'orange' : 'grey'" variant="tonal" class="meta-icon">
             <v-icon size="22" :color="plan.is_cron_enabled ? 'orange' : 'grey'">mdi-timer-cog-outline</v-icon>
           </v-avatar>
           <div class="meta-text">
@@ -70,7 +70,7 @@
         </div>
         <div class="meta-divider" />
         <div class="meta-item">
-          <v-avatar size="40" color="deep-purple" variant="tonal" rounded="lg" class="meta-icon">
+          <v-avatar size="40" color="deep-purple" variant="tonal" class="meta-icon">
             <v-icon size="22" color="deep-purple">mdi-format-list-numbered</v-icon>
           </v-avatar>
           <div class="meta-text">
@@ -80,7 +80,7 @@
         </div>
         <div class="meta-divider" />
         <div class="meta-item">
-          <v-avatar size="40" color="cyan" variant="tonal" rounded="lg" class="meta-icon">
+          <v-avatar size="40" color="cyan" variant="tonal" class="meta-icon">
             <v-icon size="22" color="cyan-darken-2">mdi-history</v-icon>
           </v-avatar>
           <div class="meta-text">

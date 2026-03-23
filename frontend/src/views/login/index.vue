@@ -79,8 +79,6 @@
           type="submit"
           :loading="loading"
           class="text-none font-weight-bold mb-6"
-          rounded="lg"
-          elevation="2"
         >
           {{ $t('login.loginButton') }}
         </v-btn>
@@ -104,7 +102,7 @@
         </div>
 
         <div class="text-center">
-          <span class="text-body-2 text-grey">{{ $t('login.noAccount') }} </span>
+          <span class="text-body-2 text-medium-emphasis">{{ $t('login.noAccount') }} </span>
           <a href="#" class="text-body-2 font-weight-bold text-primary text-decoration-none">{{ $t('login.contactAdmin') }}</a>
         </div>
       </v-form>

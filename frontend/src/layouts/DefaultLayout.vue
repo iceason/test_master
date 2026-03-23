@@ -246,7 +246,7 @@
 
     <!-- 主内容 -->
     <v-main class="bg-background">
-      <v-container fluid class="fill-height pa-6 align-start">
+      <v-container fluid class="fill-height pa-4 align-start">
         <router-view v-slot="{ Component }">
           <v-fade-transition mode="out-in">
             <component :is="Component" />

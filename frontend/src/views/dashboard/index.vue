@@ -4,7 +4,7 @@
     <v-row class="mb-8">
       <v-col cols="12">
         <div class="d-flex flex-column">
-          <h1 class="text-h4 font-weight-bold text-on-surface mb-2">
+          <h1 class="text-h5 font-weight-bold text-on-surface mb-2">
             {{ $t('intro.welcome', { name: userStore.username || 'Admin' }) }}
           </h1>
           <p class="text-body-1 text-medium-emphasis" style="max-width: 900px;">
@@ -27,7 +27,7 @@
         >
           <div class="pa-5 d-flex flex-column fill-height">
             <div class="d-flex align-start justify-space-between mb-4">
-              <v-avatar :color="feat.avatarColor" size="52" rounded="lg">
+              <v-avatar :color="feat.avatarColor" size="52">
                 <v-icon :icon="feat.icon" size="28" :color="feat.iconColor"></v-icon>
               </v-avatar>
               <v-icon icon="mdi-arrow-top-right" color="medium-emphasis" size="18"></v-icon>

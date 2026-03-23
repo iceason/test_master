@@ -1,7 +1,20 @@
 <template>
   <v-container fluid>
-    <!-- 操作栏 (搜索、筛选、按钮) -->
+    <!-- 页头 + 操作栏 -->
     <v-sheet class="pa-4 rounded-xl border-thin" elevation="0" color="surface">
+      <v-row dense align="center" class="mb-3">
+        <v-col>
+          <div class="d-flex align-center">
+            <v-avatar color="primary" variant="tonal" size="40" class="mr-3">
+              <v-icon icon="mdi-api" size="22"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h6 font-weight-bold">{{ $t('interface.title') }}</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('interface.subtitle') }}</div>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
       <v-row dense align="center">
         <v-col cols="12" md="4">
           <v-text-field
@@ -35,24 +48,21 @@
             color="secondary"
             variant="tonal"
             prepend-icon="mdi-file-import"
-            elevation="2"
             @click="importDialog = true"
             class="text-none"
-            rounded="lg"
           >
             {{ $t('interface.importOpenAPI') }}
           </v-btn>
           <v-btn
             color="error"
+            variant="tonal"
             prepend-icon="mdi-delete-outline"
-            elevation="2"
             @click="handleBatchDelete()"
             class="text-none ml-2"
-            rounded="lg"
           >
             {{ $t('common.batchDelete') }}
           </v-btn>
-          <v-btn color="primary" prepend-icon="mdi-plus" elevation="2" @click="openDialog()" class="text-none ml-2" rounded="lg">
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="openDialog()" class="text-none ml-2">
             {{ $t('interface.new') }}
           </v-btn>
         </v-col>
@@ -159,9 +169,9 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="dialog" max-width="800px" persistent>
       <v-card class="rounded-xl">
-        <v-card-title class="bg-primary text-white pa-4">
-          <span class="text-subtitle-1 font-weight-bold">{{ editedId ? $t('interface.edit') : $t('interface.new') }}</span>
-        </v-card-title>
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ editedId ? $t('interface.edit') : $t('interface.new') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4">
           <v-form ref="form" v-model="valid">
             <v-row>
@@ -227,10 +237,10 @@
         <v-divider></v-divider>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="dialog = false">
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="dialog = false">
             {{ $t('common.cancel') }}
           </v-btn>
-          <v-btn color="primary" variant="flat" rounded="lg" class="text-none ml-3" @click="save" :disabled="!valid">
+          <v-btn color="primary" variant="flat" class="text-none ml-3" @click="save" :disabled="!valid">
             {{ $t('common.save') }}
           </v-btn>
         </v-card-actions>
@@ -240,18 +250,18 @@
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="400px">
       <v-card class="rounded-xl">
-        <v-card-title class="text-subtitle-1 font-weight-bold pa-4 bg-error text-white">
-          {{ $t('common.delete') }}
-        </v-card-title>
+        <v-toolbar color="error" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('common.delete') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4 text-body-2">
           {{ deleteItemName ? $t('common.confirmDelete', { name: deleteItemName }) : '' }}
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="deleteDialog = false">
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="deleteDialog = false">
             {{ $t('common.cancel') }}
           </v-btn>
-          <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmDelete">
+          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmDelete">
             {{ $t('common.delete') }}
           </v-btn>
         </v-card-actions>
@@ -261,18 +271,18 @@
     <!-- Batch Delete Confirmation Dialog -->
     <v-dialog v-model="batchDeleteDialog" max-width="400px">
       <v-card class="rounded-xl">
-        <v-card-title class="text-subtitle-1 font-weight-bold pa-4 bg-error text-white">
-          {{ $t('common.batchDelete') }}
-        </v-card-title>
+        <v-toolbar color="error" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('common.batchDelete') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4 text-body-2">
           {{ $t('common.confirmBatchDelete', { count: selectedIds.length }) }}
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="batchDeleteDialog = false">
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="batchDeleteDialog = false">
             {{ $t('common.cancel') }}
           </v-btn>
-          <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmBatchDelete">
+          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmBatchDelete">
             {{ $t('common.delete') }}
           </v-btn>
         </v-card-actions>

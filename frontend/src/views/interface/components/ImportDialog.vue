@@ -134,14 +134,13 @@
       <v-divider></v-divider>
       <v-card-actions class="px-6 pb-4 pt-3">
         <v-spacer></v-spacer>
-        <v-btn variant="text" rounded="lg" class="text-none" @click="close">
+        <v-btn variant="text" class="text-none" @click="close">
           {{ importResult ? $t('common.close') : $t('common.cancel') }}
         </v-btn>
         <v-btn
           v-if="!importResult"
           color="primary"
           variant="flat"
-          rounded="lg"
           class="text-none ml-3"
           :loading="importing"
           :disabled="!canImport"

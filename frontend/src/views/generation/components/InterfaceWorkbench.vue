@@ -15,8 +15,6 @@
       <v-btn
         variant="flat"
         color="primary"
-        elevation="2"
-        rounded="lg"
         prepend-icon="mdi-content-save-outline"
         @click="saveInterface"
         :loading="saving"
@@ -73,7 +71,7 @@
                       v-model="form.name"
                       :label="$t('interface.fields.name')"
                       variant="outlined"
-                      density="comfortable"
+                      density="compact"
                       :placeholder="$t('generation.namePlaceholder')"
                       bg-color="background"
                     ></v-text-field>
@@ -84,7 +82,7 @@
                       :items="['GET', 'POST', 'PUT', 'DELETE', 'PATCH']"
                       :label="$t('interface.fields.method')"
                       variant="outlined"
-                      density="comfortable"
+                      density="compact"
                       bg-color="background"
                     ></v-select>
                   </v-col>
@@ -93,7 +91,7 @@
                       v-model="form.path"
                       :label="$t('interface.fields.path')"
                       variant="outlined"
-                      density="comfortable"
+                      density="compact"
                       placeholder="/api/v1/..."
                       prefix="API"
                       bg-color="background"
@@ -192,7 +190,6 @@
                   color="primary"
                   size="large"
                   prepend-icon="mdi-creation"
-                  rounded="pill"
                   elevation="0"
                   class="px-8"
                   @click="startGenerate"
@@ -219,13 +216,12 @@
               size="small"
               @click="handleResultBatchDelete"
               class="text-none"
-              rounded="lg"
             >
               {{ $t('common.batchDelete') }}
             </v-btn>
             <v-menu>
               <template v-slot:activator="{ props: menuProps }">
-                <v-btn color="secondary" variant="tonal" prepend-icon="mdi-export" v-bind="menuProps" class="text-none ml-2" size="small" rounded="lg">
+                <v-btn color="secondary" variant="tonal" prepend-icon="mdi-export" v-bind="menuProps" class="text-none ml-2" size="small">
                   {{ $t('common.export') }}
                 </v-btn>
               </template>
@@ -249,7 +245,7 @@
               hover
               item-key="id"
               class="fill-height"
-              density="comfortable"
+              density="compact"
               @update:options="onResultTableOptions"
             >
               <template v-slot:header.select>
@@ -273,7 +269,7 @@
                 <v-chip v-if="item.test_type" size="small" label :color="getTestTypeColor(item.test_type)">
                   {{ getTestTypeTitle(item.test_type) }}
                 </v-chip>
-                <span v-else class="text-grey">-</span>
+                <span v-else class="text-medium-emphasis">-</span>
               </template>
 
               <template v-slot:item.category_name="{ item }">
@@ -285,7 +281,7 @@
 
               <template v-slot:item.test_field="{ item }">
                 <code v-if="item.test_field" class="text-grey-darken-3 bg-grey-lighten-4 px-1 rounded">{{ item.test_field }}</code>
-                <span v-else class="text-grey">-</span>
+                <span v-else class="text-medium-emphasis">-</span>
               </template>
 
               <template v-slot:item.actions="{ item }">
@@ -387,14 +383,16 @@
           <!-- Delete Confirmation -->
           <v-dialog v-model="resultDeleteDialog" max-width="400px">
             <v-card class="rounded-xl">
-              <v-card-title class="text-subtitle-1 font-weight-bold pa-4 bg-error text-white">{{ $t('common.delete') }}</v-card-title>
+              <v-toolbar color="error" density="compact">
+                <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('common.delete') }}</v-toolbar-title>
+              </v-toolbar>
               <v-card-text class="pa-4 text-body-2">
                 {{ resultDeleteName ? $t('common.confirmDelete', { name: resultDeleteName }) : '' }}
               </v-card-text>
               <v-card-actions class="px-6 pb-4">
                 <v-spacer></v-spacer>
-                <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="resultDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
-                <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmResultDelete">{{ $t('common.delete') }}</v-btn>
+                <v-btn variant="text" color="grey-darken-1" class="text-none" @click="resultDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+                <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmResultDelete">{{ $t('common.delete') }}</v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>
@@ -402,14 +400,16 @@
           <!-- Batch Delete Confirmation -->
           <v-dialog v-model="resultBatchDeleteDialog" max-width="400px">
             <v-card class="rounded-xl">
-              <v-card-title class="text-subtitle-1 font-weight-bold pa-4 bg-error text-white">{{ $t('common.batchDelete') }}</v-card-title>
+              <v-toolbar color="error" density="compact">
+                <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('common.batchDelete') }}</v-toolbar-title>
+              </v-toolbar>
               <v-card-text class="pa-4 text-body-2">
                 {{ $t('common.confirmBatchDelete', { count: resultSelectedIds.length }) }}
               </v-card-text>
               <v-card-actions class="px-6 pb-4">
                 <v-spacer></v-spacer>
-                <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="resultBatchDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
-                <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmResultBatchDelete">{{ $t('common.delete') }}</v-btn>
+                <v-btn variant="text" color="grey-darken-1" class="text-none" @click="resultBatchDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+                <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmResultBatchDelete">{{ $t('common.delete') }}</v-btn>
               </v-card-actions>
             </v-card>
           </v-dialog>

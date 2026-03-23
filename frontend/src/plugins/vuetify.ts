@@ -83,16 +83,15 @@ export default createVuetify({
     },
     VCard: {
       elevation: 1,
-      rounded: 'lg',
+      rounded: 'xl',
       variant: 'elevated',
     },
     VBtn: {
-      rounded: 'md',
+      rounded: 'lg',
       fontWeight: '500',
       letterSpacing: '0',
-      variant: 'elevated',
-      height: 36,
-      size: 'small',
+      variant: 'flat',
+      size: 'default',
     },
     VTextField: {
       variant: 'outlined',
@@ -171,7 +170,7 @@ export default createVuetify({
       color: 'surface',
     },
     VAppBar: {
-      elevation: 1,
+      elevation: 0,
       color: 'surface',
       density: 'compact',
     },

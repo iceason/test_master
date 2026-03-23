@@ -1,7 +1,20 @@
 <template>
   <v-container fluid>
-    <!-- Top bar -->
+    <!-- 页头 + 操作栏 -->
     <v-sheet class="pa-4 rounded-xl border-thin" elevation="0" color="surface">
+      <v-row dense align="center" class="mb-3">
+        <v-col>
+          <div class="d-flex align-center">
+            <v-avatar color="primary" variant="tonal" size="40" class="mr-3">
+              <v-icon icon="mdi-clipboard-flow-outline" size="22"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h6 font-weight-bold">{{ $t('testing.plans.title') }}</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('testing.plans.subtitle') }}</div>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
       <v-row dense align="center">
         <v-col cols="12" md="4">
           <v-text-field v-model="search" :placeholder="$t('common.search')" prepend-inner-icon="mdi-magnify" variant="outlined" density="compact" hide-details bg-color="background" class="rounded-lg" />
@@ -10,7 +23,7 @@
           <v-select v-model="statusFilter" :items="statusOptions" :placeholder="$t('testing.plans.fields.status')" variant="outlined" density="compact" hide-details bg-color="background" class="rounded-lg" clearable />
         </v-col>
         <v-col cols="12" md="2">
-          <v-btn color="primary" prepend-icon="mdi-plus" @click="openDialog()" class="text-none font-weight-bold w-100" rounded="lg" elevation="2">
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="openDialog()" class="text-none font-weight-bold w-100">
             {{ $t('testing.plans.new') }}
           </v-btn>
         </v-col>
@@ -26,7 +39,7 @@
             <v-icon start size="14">mdi-clock-outline</v-icon>
             {{ item.cron_expression }}
           </v-chip>
-          <span v-else class="text-grey">-</span>
+          <span v-else class="text-medium-emphasis">-</span>
         </template>
 
         <template v-slot:item.status="{ item }">
@@ -40,9 +53,9 @@
             <v-chip :color="getExecStatusColor(item.last_execution_status.status)" size="small" variant="flat">
               {{ $t(`testing.executions.status.${item.last_execution_status.status}`) }}
             </v-chip>
-            <span class="text-caption text-grey">{{ formatTime(item.last_execution_status.started_at) }}</span>
+            <span class="text-caption text-medium-emphasis">{{ formatTime(item.last_execution_status.started_at) }}</span>
           </div>
-          <span v-else class="text-grey">-</span>
+          <span v-else class="text-medium-emphasis">-</span>
         </template>
 
         <template v-slot:item.actions="{ item }">
@@ -107,7 +120,7 @@
                 <!-- Basic Info -->
                 <v-expansion-panel value="basic">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-information-outline</v-icon>{{ $t('testing.plans.fields.name') }}
+                    {{ $t('testing.plans.fields.name') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-text-field v-model="form.name" :label="$t('testing.plans.fields.name')" variant="outlined" density="compact" class="mb-3" :rules="[v => !!v || $t('common.required')]" />
@@ -120,7 +133,7 @@
                 <!-- Source Code -->
                 <v-expansion-panel value="source">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-source-branch</v-icon>{{ $t('testing.plans.sections.sourceCode') }}
+                    {{ $t('testing.plans.sections.sourceCode') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-text-field v-model="form.git_repo_url" :label="$t('testing.plans.fields.gitRepoUrl')" variant="outlined" density="compact" class="mb-3" placeholder="https://github.com/user/repo.git" />
@@ -133,7 +146,7 @@
                 <!-- Environment Variables -->
                 <v-expansion-panel value="envVars">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-variable</v-icon>{{ $t('testing.plans.sections.envVars') }}
+                    {{ $t('testing.plans.sections.envVars') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-row v-for="(ev, idx) in form.environment_variables" :key="idx" dense class="mb-2">
@@ -156,7 +169,7 @@
                 <!-- 定时任务 -->
                 <v-expansion-panel value="cron">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-clock-outline</v-icon>{{ $t('testing.plans.cronField') }}
+                    {{ $t('testing.plans.cronField') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-switch v-model="form.is_cron_enabled" :label="$t('testing.plans.fields.isCronEnabled')" color="primary" density="compact" hide-details class="mb-3" />
@@ -167,7 +180,7 @@
                 <!-- Notification -->
                 <v-expansion-panel value="notification">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-bell-outline</v-icon>{{ $t('testing.notification.title') }}
+                    {{ $t('testing.notification.title') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-switch v-model="notifyEmail" :label="$t('testing.notification.email')" color="primary" density="compact" hide-details class="mb-3" />
@@ -183,7 +196,7 @@
                 <!-- Report -->
                 <v-expansion-panel value="report">
                   <v-expansion-panel-title class="font-weight-medium">
-                    <v-icon start size="18">mdi-file-chart-outline</v-icon>{{ $t('testing.plans.sections.reportConfig') }}
+                    {{ $t('testing.plans.sections.reportConfig') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-switch v-model="form.report_enabled" :label="$t('testing.plans.fields.reportEnabled')" color="primary" density="compact" hide-details class="mb-3" />
@@ -192,11 +205,6 @@
                 </v-expansion-panel>
               </v-expansion-panels>
 
-              <div class="pa-3">
-                <v-alert type="info" variant="tonal" density="compact" class="text-caption">
-                  {{ $t('testing.plans.jenkinsAutoCreate') }}
-                </v-alert>
-              </div>
             </v-form>
           </div>
 
@@ -204,13 +212,10 @@
           <div class="flex-grow-1 d-flex flex-column" style="overflow: hidden; background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);">
             <div class="pipeline-header">
               <div class="d-flex align-center">
-                <div class="pipeline-header-icon">
-                  <v-icon size="20" color="white">mdi-pipe</v-icon>
-                </div>
-                <span class="text-subtitle-2 font-weight-bold ml-3">{{ $t('testing.steps.title') }}</span>
+                <span class="text-subtitle-2 font-weight-bold">{{ $t('testing.steps.title') }}</span>
                 <v-chip size="x-small" color="primary" variant="tonal" class="ml-2" pill>{{ form.steps.length }} {{ $t('testing.plans.stepsCount') }}</v-chip>
               </div>
-              <v-btn-toggle v-model="editorMode" mandatory density="compact" rounded="lg" color="primary" variant="outlined">
+              <v-btn-toggle v-model="editorMode" mandatory density="compact" color="primary" variant="outlined">
                 <v-btn value="visual" size="small" class="text-none">
                   <v-icon start size="16">mdi-drag-variant</v-icon>{{ $t('testing.pipeline.visualEditor') }}
                 </v-btn>
@@ -685,15 +690,5 @@ onBeforeUnmount(stopAutoRefresh)
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-.pipeline-header-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #1976d2, #42a5f5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
 }
 </style>

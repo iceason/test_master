@@ -124,6 +124,7 @@ export default {
   },
   interface: {
     title: 'Interface Management',
+    subtitle: 'View and manage all API interface definitions',
     new: 'New Interface',
     edit: 'Edit Interface',
     generateTestCases: 'Generate Test Cases',
@@ -165,6 +166,7 @@ export default {
   },
   testcase: {
     title: 'Test Case Management',
+    subtitle: 'Browse, search and manage all test cases',
     new: 'New Test Case',
     edit: 'Edit Test Case',
     fields: {
@@ -206,6 +208,7 @@ export default {
     title: 'Test Execution',
     agents: {
       title: 'Executor Agents',
+      subtitle: 'Manage executor machines and Jenkins configurations',
       new: 'New Agent',
       edit: 'Edit Agent',
       ping: 'Ping',
@@ -233,6 +236,7 @@ export default {
     },
     plans: {
       title: 'Build Plans',
+      subtitle: 'Configure and manage CI/CD build pipelines',
       new: 'New Build Plan',
       edit: 'Edit Build Plan',
       trigger: 'Trigger Build',
@@ -320,7 +324,7 @@ export default {
       stopSent: 'Stop command sent',
     },
     steps: {
-      title: 'Build Steps',
+      title: 'Pipeline Configuration',
       add: 'Add Step',
       edit: 'Edit Step',
       name: 'Step Name',

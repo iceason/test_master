@@ -33,10 +33,10 @@ body {
 }
 
 /* Scrollbar styling - Dark mode */
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
+.v-theme--dark ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
 }
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+.v-theme--dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 
@@ -127,19 +127,23 @@ body {
 /* ===== Theme Variables ===== */
 :root {
   --v-border-color: 0, 0, 0;
-  --v-border-opacity: 0.08;
+  --v-border-opacity: 0.12;
   --app-sidebar-width: 260px;
   --app-header-height: 48px;
 }
 
-[data-theme="dark"] {
+.v-theme--dark {
   --v-border-color: 255, 255, 255;
   --v-border-opacity: 0.12;
 }
 
-/* ===== Smooth transitions for theme changes ===== */
-* {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+/* ===== Smooth transitions for theme changes (scoped to layout shells) ===== */
+.v-application,
+.v-navigation-drawer,
+.v-app-bar,
+.v-card,
+.v-sheet {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 /* ===== Fix Vuetify v-data-table header z-index for sticky headers ===== */

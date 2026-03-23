@@ -59,7 +59,7 @@
               
               <!-- 操作按钮 -->
               <div class="d-flex justify-end mt-6">
-                <v-btn color="primary" variant="flat" elevation="2" rounded="lg" class="text-none" @click="changePassword" :disabled="!passwordValid || changingPassword">{{ changingPassword ? $t('common.loading') : $t('profile.updatePassword') }}</v-btn>
+                <v-btn color="primary" variant="flat" class="text-none" @click="changePassword" :disabled="!passwordValid || changingPassword">{{ changingPassword ? $t('common.loading') : $t('profile.updatePassword') }}</v-btn>
               </div>
             </v-form>
           </div>

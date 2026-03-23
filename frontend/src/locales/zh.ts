@@ -124,6 +124,7 @@ export default {
   },
   interface: {
     title: '接口管理',
+    subtitle: '查看和管理所有 API 接口定义',
     new: '新建接口',
     edit: '编辑接口',
     generateTestCases: '生成测试用例',
@@ -165,6 +166,7 @@ export default {
   },
   testcase: {
     title: '用例管理',
+    subtitle: '浏览、搜索和管理所有测试用例',
     new: '新建用例',
     edit: '编辑用例',
     fields: {
@@ -206,6 +208,7 @@ export default {
     title: '测试执行',
     agents: {
       title: '执行机管理',
+      subtitle: '管理测试执行机器与 Jenkins 连接配置',
       new: '新建执行机',
       edit: '编辑执行机',
       ping: '检测连通性',
@@ -233,6 +236,7 @@ export default {
     },
     plans: {
       title: '构建计划',
+      subtitle: '配置和管理 CI/CD 构建流水线',
       new: '新建构建计划',
       edit: '编辑构建计划',
       trigger: '触发构建',
@@ -320,7 +324,7 @@ export default {
       stopSent: '已发送停止指令',
     },
     steps: {
-      title: '构建步骤',
+      title: 'Pipeline 配置',
       add: '添加步骤',
       edit: '编辑步骤',
       name: '步骤名称',

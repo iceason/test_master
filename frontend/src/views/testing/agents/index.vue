@@ -1,7 +1,20 @@
 <template>
   <v-container fluid>
-    <!-- Top bar -->
+    <!-- 页头 + 操作栏 -->
     <v-sheet class="pa-4 rounded-xl border-thin" elevation="0" color="surface">
+      <v-row dense align="center" class="mb-3">
+        <v-col>
+          <div class="d-flex align-center">
+            <v-avatar color="primary" variant="tonal" size="40" class="mr-3">
+              <v-icon icon="mdi-server-outline" size="22"></v-icon>
+            </v-avatar>
+            <div>
+              <div class="text-h6 font-weight-bold">{{ $t('testing.agents.title') }}</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('testing.agents.subtitle') }}</div>
+            </div>
+          </div>
+        </v-col>
+      </v-row>
       <v-row dense align="center">
         <v-col cols="12" md="4">
           <v-text-field
@@ -34,8 +47,6 @@
             prepend-icon="mdi-plus"
             @click="openDialog()"
             class="text-none font-weight-bold w-100"
-            rounded="lg"
-            elevation="2"
           >
             {{ $t('testing.agents.new') }}
           </v-btn>
@@ -93,9 +104,9 @@
     <!-- Delete Confirm Dialog -->
     <v-dialog v-model="deleteConfirmDialog" max-width="400">
       <v-card class="rounded-xl">
-        <v-card-title class="bg-error text-white pa-4">
-          <span class="text-subtitle-1 font-weight-bold">{{ $t('common.delete') }}</span>
-        </v-card-title>
+        <v-toolbar color="error" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ $t('common.delete') }}</v-toolbar-title>
+        </v-toolbar>
         <v-card-text class="pa-4">{{ $t('common.confirmDelete', { name: deleteTarget?.name }) }}</v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
@@ -108,10 +119,11 @@
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="dialog" max-width="650px">
       <v-card class="rounded-xl">
-        <v-card-title class="pa-4 bg-primary text-white d-flex align-center justify-space-between">
-          <span class="text-subtitle-1 font-weight-bold">{{ form.id ? $t('testing.agents.edit') : $t('testing.agents.new') }}</span>
-          <v-btn icon="mdi-close" variant="text" color="white" density="compact" @click="dialog = false" />
-        </v-card-title>
+        <v-toolbar color="primary" density="compact">
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ form.id ? $t('testing.agents.edit') : $t('testing.agents.new') }}</v-toolbar-title>
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="dialog = false" />
+        </v-toolbar>
 
         <v-card-text class="pa-6">
           <v-form ref="formRef" @submit.prevent="saveItem">

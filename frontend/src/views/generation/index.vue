@@ -21,7 +21,7 @@
             :interface-id="selectedInterface.id"
             @refresh-tree="refreshTree"
           />
-          <div v-else class="fill-height d-flex flex-column align-center justify-center text-grey">
+          <div v-else class="fill-height d-flex flex-column align-center justify-center text-medium-emphasis">
             <v-icon icon="mdi-code-braces" size="64" class="mb-4 opacity-20"></v-icon>
             <div class="text-subtitle-1 font-weight-bold opacity-50">{{ $t('generation.selectInterface') }}</div>
             <div class="text-caption opacity-40 mt-2">{{ $t('generation.selectInterfaceDesc') }}</div>

@@ -34,8 +34,6 @@
             prepend-icon="mdi-plus"
             @click="openDialog()"
             class="text-none font-weight-bold w-100"
-            rounded="lg"
-            elevation="2"
           >
             {{ $t('plan.new') }}
           </v-btn>
