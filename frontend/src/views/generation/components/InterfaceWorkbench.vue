@@ -1,10 +1,10 @@
 <template>
   <div class="fill-height d-flex flex-column pa-0">
     <!-- 头部操作区 -->
-    <div class="d-flex align-center pa-4 bg-surface border-b">
+    <div class="d-flex align-center px-4 bg-surface border-b" style="height: 64px; flex-shrink: 0;">
       <div class="d-flex align-center">
-        <v-avatar color="primary-lighten-4" size="40" class="mr-3 rounded-lg">
-          <v-icon icon="mdi-file-code-outline" color="primary" size="24"></v-icon>
+        <v-avatar color="primary-lighten-4" size="36" class="mr-3 rounded-lg">
+          <v-icon icon="mdi-file-code-outline" color="primary" size="20"></v-icon>
         </v-avatar>
         <div>
           <div class="text-subtitle-1 font-weight-bold text-on-surface">{{ form.name || $t('generation.untitledInterface') }}</div>

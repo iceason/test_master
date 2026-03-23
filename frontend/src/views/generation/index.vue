@@ -1,21 +1,19 @@
 <template>
-  <v-container fluid class="fill-height pa-0">
+  <v-container fluid class="fill-height pa-4">
     <v-row no-gutters class="fill-height">
       <!-- 左侧目录树 -->
       <v-col cols="12" md="3" class="d-flex flex-column fill-height">
-        <v-card class="flex-grow-1 d-flex flex-column" elevation="0" border="thin" tile>
-          <div class="flex-grow-1 overflow-y-auto pa-2">
-            <InterfaceTree 
-              @select="handleSelect" 
-              ref="treeRef"
-            />
-          </div>
+        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="1" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+          <InterfaceTree 
+            @select="handleSelect" 
+            ref="treeRef"
+          />
         </v-card>
       </v-col>
       
       <!-- 右侧工作台 -->
       <v-col cols="12" md="9" class="d-flex flex-column fill-height">
-        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="0" border="thin" tile>
+        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="1" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
           <InterfaceWorkbench 
             v-if="selectedInterface" 
             :interface-id="selectedInterface.id"

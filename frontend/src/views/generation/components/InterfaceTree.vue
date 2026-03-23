@@ -1,7 +1,7 @@
 <template>
   <div class="d-flex flex-column fill-height">
     <!-- 头部操作栏 -->
-    <div class="pa-4 d-flex align-center border-b">
+    <div class="px-4 d-flex align-center border-b" style="height: 64px; flex-shrink: 0;">
       <span class="text-h6 font-weight-bold">{{ $t('common.interfaces') }}</span>
       <v-spacer></v-spacer>
       <v-btn
