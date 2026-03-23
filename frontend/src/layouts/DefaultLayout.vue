@@ -15,7 +15,7 @@
       </div>
 
       <div class="px-3">
-        <v-list density="compact" nav>
+        <v-list :opened="openedGroups" @update:opened="onOpenedUpdate" density="compact" nav>
           <v-list-subheader class="text-uppercase text-caption font-weight-bold mb-2">Workspace</v-list-subheader>
           
           <v-list-item
@@ -34,18 +34,68 @@
             <v-list-item-title class="font-weight-medium">{{ $t(item.title) }}</v-list-item-title>
           </v-list-item>
 
-          <!-- Testing module expandable group -->
+          <!-- Project management group -->
+          <v-list-group value="projects">
+            <template v-slot:activator="{ props }">
+              <v-list-item v-bind="props" rounded="xl" class="mb-1">
+                <template v-slot:prepend>
+                  <v-icon icon="mdi-briefcase-outline" class="mr-2"></v-icon>
+                </template>
+                <v-list-item-title class="font-weight-medium">{{ $t('common.projects') }}</v-list-item-title>
+              </v-list-item>
+            </template>
+            <v-list-item
+              v-for="sub in projectSubItems"
+              :key="sub.value"
+              :value="sub.value"
+              :to="sub.to"
+              rounded="xl"
+              color="primary"
+              class="mb-1"
+              :active-class="'bg-primary-container text-on-primary-container'"
+            >
+              <template v-slot:prepend>
+                <v-icon :icon="sub.icon" class="mr-2"></v-icon>
+              </template>
+              <v-list-item-title class="font-weight-medium">{{ $t(sub.title) }}</v-list-item-title>
+            </v-list-item>
+          </v-list-group>
+
+          <!-- Test case management group -->
+          <v-list-group value="testcases">
+            <template v-slot:activator="{ props }">
+              <v-list-item v-bind="props" rounded="xl" class="mb-1">
+                <template v-slot:prepend>
+                  <v-icon icon="mdi-clipboard-list-outline" class="mr-2"></v-icon>
+                </template>
+                <v-list-item-title class="font-weight-medium">{{ $t('common.testcases') }}</v-list-item-title>
+              </v-list-item>
+            </template>
+            <v-list-item
+              v-for="sub in testcaseSubItems"
+              :key="sub.value"
+              :value="sub.value"
+              :to="sub.to"
+              rounded="xl"
+              color="primary"
+              class="mb-1"
+              :active-class="'bg-primary-container text-on-primary-container'"
+            >
+              <template v-slot:prepend>
+                <v-icon :icon="sub.icon" class="mr-2"></v-icon>
+              </template>
+              <v-list-item-title class="font-weight-medium">{{ $t(sub.title) }}</v-list-item-title>
+            </v-list-item>
+          </v-list-group>
+
+          <!-- Continuous build group -->
           <v-list-group value="testing">
             <template v-slot:activator="{ props }">
-              <v-list-item
-                v-bind="props"
-                rounded="xl"
-                class="mb-1"
-              >
+              <v-list-item v-bind="props" rounded="xl" class="mb-1">
                 <template v-slot:prepend>
                   <v-icon icon="mdi-play-circle-outline" class="mr-2"></v-icon>
                 </template>
-                <v-list-item-title class="font-weight-medium">{{ $t('common.testing') }}</v-list-item-title>
+                <v-list-item-title class="font-weight-medium">{{ $t('common.continuousBuild') }}</v-list-item-title>
               </v-list-item>
             </template>
             <v-list-item
@@ -68,11 +118,7 @@
           <!-- Settings group -->
           <v-list-group value="settings">
             <template v-slot:activator="{ props }">
-              <v-list-item
-                v-bind="props"
-                rounded="xl"
-                class="mb-1"
-              >
+              <v-list-item v-bind="props" rounded="xl" class="mb-1">
                 <template v-slot:prepend>
                   <v-icon icon="mdi-cog-outline" class="mr-2"></v-icon>
                 </template>
@@ -212,7 +258,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { useI18n } from 'vue-i18n'
@@ -226,29 +272,70 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const { isDark, toggleTheme } = useTheme()
 
+const pathGroupRules: [string, string][] = [
+  ['/projects', 'projects'],
+  ['/settings/environments', 'projects'],
+  ['/generation', 'testcases'],
+  ['/testcase', 'testcases'],
+  ['/testing/executions', 'testcases'],
+  ['/testing/agents', 'testing'],
+  ['/testing/plans', 'testing'],
+  ['/settings/email-templates', 'settings'],
+]
+
+function getActiveGroup(path: string): string | undefined {
+  return pathGroupRules.find(([prefix]) => path.startsWith(prefix))?.[1]
+}
+
+const openedGroups = ref<string[]>([])
+
+watch(() => route.path, (path) => {
+  const group = getActiveGroup(path)
+  if (group && !openedGroups.value.includes(group)) {
+    openedGroups.value = [...openedGroups.value, group]
+  }
+}, { immediate: true })
+
+function onOpenedUpdate(val: string[]) {
+  const activeGroup = getActiveGroup(route.path)
+  if (activeGroup && !val.includes(activeGroup)) {
+    openedGroups.value = [...val, activeGroup]
+    return
+  }
+  openedGroups.value = val
+}
+
 const menuItems = [
   { title: 'common.introduction', icon: 'mdi-view-dashboard-outline', value: 'dashboard', to: '/dashboard' },
   { title: 'common.interfaces', icon: 'mdi-api', value: 'interfaces', to: '/interface' },
-  { title: 'common.generation', icon: 'mdi-creation', value: 'generation', to: '/generation' },
-  { title: 'common.testcases', icon: 'mdi-clipboard-list-outline', value: 'testcases', to: '/testcase' },
+]
+
+const projectSubItems = [
+  { title: 'common.projectAndPermission', icon: 'mdi-shield-account-outline', value: 'sub-projects', to: '/projects' },
+  { title: 'common.environments', icon: 'mdi-earth', value: 'sub-environments', to: '/settings/environments' },
+]
+
+const testcaseSubItems = [
+  { title: 'common.generation', icon: 'mdi-creation', value: 'sub-generation', to: '/generation' },
+  { title: 'common.interfaceTesting', icon: 'mdi-clipboard-list-outline', value: 'sub-testcases', to: '/testcase' },
+  { title: 'common.executionRecords', icon: 'mdi-history', value: 'sub-executions', to: '/testing/executions' },
 ]
 
 const testingSubItems = [
-  { title: 'common.executorAgents', icon: 'mdi-server-network', value: 'agents', to: '/testing/agents' },
-  { title: 'common.buildPlans', icon: 'mdi-clipboard-flow-outline', value: 'buildPlans', to: '/testing/plans' },
-  { title: 'common.executionRecords', icon: 'mdi-history', value: 'executions', to: '/testing/executions' },
+  { title: 'common.executorAgents', icon: 'mdi-server-network', value: 'sub-agents', to: '/testing/agents' },
+  { title: 'common.buildPlans', icon: 'mdi-clipboard-flow-outline', value: 'sub-buildPlans', to: '/testing/plans' },
 ]
 
 const settingsSubItems = [
-  { title: 'common.environments', icon: 'mdi-earth', value: 'environments', to: '/settings/environments' },
-  { title: 'common.emailTemplates', icon: 'mdi-email-newsletter', value: 'emailTemplates', to: '/settings/email-templates' },
+  { title: 'common.emailTemplates', icon: 'mdi-email-newsletter', value: 'sub-emailTemplates', to: '/settings/email-templates' },
 ]
 
 const routeNameToI18nKey: Record<string, string> = {
   Dashboard: 'common.dashboard',
+  Projects: 'common.projectAndPermission',
   Interfaces: 'common.interfaces',
   Generation: 'common.generation',
-  TestCases: 'common.testcases',
+  TestCases: 'common.interfaceTesting',
   ExecutorAgents: 'common.executorAgents',
   BuildPlans: 'common.buildPlans',
   BuildPlanDetail: 'common.buildPlans',

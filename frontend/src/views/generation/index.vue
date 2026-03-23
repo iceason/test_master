@@ -1,9 +1,9 @@
 <template>
-  <v-container fluid class="fill-height pa-4">
-    <v-row class="fill-height">
+  <v-container fluid class="fill-height pa-0">
+    <v-row no-gutters class="fill-height">
       <!-- 左侧目录树 -->
       <v-col cols="12" md="3" class="d-flex flex-column fill-height">
-        <v-card class="flex-grow-1 d-flex flex-column" elevation="0" border="thin">
+        <v-card class="flex-grow-1 d-flex flex-column" elevation="0" border="thin" tile>
           <div class="flex-grow-1 overflow-y-auto pa-2">
             <InterfaceTree 
               @select="handleSelect" 
@@ -15,7 +15,7 @@
       
       <!-- 右侧工作台 -->
       <v-col cols="12" md="9" class="d-flex flex-column fill-height">
-        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="0" border="thin">
+        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="0" border="thin" tile>
           <InterfaceWorkbench 
             v-if="selectedInterface" 
             :interface-id="selectedInterface.id"

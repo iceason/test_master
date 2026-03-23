@@ -46,6 +46,10 @@ export default {
     import: '导入',
     systemSettings: '系统设置',
     emailTemplates: '邮件模板',
+    projects: '项目管理',
+    projectAndPermission: '项目与权限',
+    interfaceTesting: '接口测试',
+    continuousBuild: '持续构建',
     environments: '环境管理',
     executionRecords: '执行记录',
     language: {
@@ -75,32 +79,47 @@ export default {
     copyright: '© 2025 Test Master. 保留所有权利。',
   },
   intro: {
-    title: '自动化测试用例生成器',
-    subtitle: '利用 AI 驱动的测试用例生成技术，简化您的 QA 流程。',
+    welcome: '欢迎回来，{name}',
+    title: 'Test Master — 一站式接口测试平台',
+    subtitle: '从项目创建、接口管理、AI 用例生成，到自动化执行与持续构建，为您提供完整的接口质量保障能力。',
     features: {
+      projectManagement: {
+        title: '项目管理',
+        desc: '创建项目空间并管理团队成员与权限，让接口和用例按项目维度组织，协作井然有序。'
+      },
       apiManagement: {
         title: '接口管理',
-        desc: '统一管理 API 定义，支持手动录入和 Schema 导入。'
+        desc: '统一管理 API 定义，支持手动录入和 OpenAPI / Swagger Schema 一键导入，快速建立接口资产库。'
       },
       aiGeneration: {
         title: 'AI 智能生成',
-        desc: '基于 API Schema，利用先进的 AI 算法自动生成全面的测试用例。'
+        desc: '基于接口 Schema，利用 AI 算法自动生成测试用例，覆盖正向、边界及异常场景，大幅减少人工编写。'
+      },
+      interfaceTesting: {
+        title: '接口测试',
+        desc: '在线管理和编辑测试用例，支持分类筛选与批量操作，查看执行记录追踪测试进度。'
+      },
+      continuousBuild: {
+        title: '持续构建',
+        desc: '对接 Jenkins 等 CI 执行器，配置构建计划实现自动化回归测试，保障每次发版的接口质量。'
       },
       export: {
         title: '灵活导出',
-        desc: '支持导出为 Excel、XMind 和 JSON 等多种格式，无缝集成到您的工作流中。'
+        desc: '一键导出测试用例为 Excel、XMind、YAML 等多种格式，方便离线评审或与其他系统集成。'
       }
     },
     guide: {
-      title: '使用指南',
-      step1: '定义接口',
-      step1Desc: '进入“接口管理”页面，新建接口并输入 API 路径、方法及 Schema 定义。',
-      step2: '生成用例',
-      step2Desc: '点击接口列表中的“试管图标”，触发 AI 自动生成测试用例。',
-      step3: '评审与编辑',
-      step3Desc: '进入“用例管理”页面查看生成的用例，您可以根据需要进行编辑或删除。',
-      step4: '导出数据',
-      step4Desc: '使用“导出”按钮，将测试计划下载为您偏好的格式。'
+      title: '快速上手',
+      step1: '创建项目',
+      step1Desc: '在“项目管理”中新建项目并邀请团队成员，统一管理接口和环境配置。',
+      step2: '导入接口',
+      step2Desc: '进入“接口管理”，手动新建或通过 OpenAPI 文件批量导入 API 定义。',
+      step3: '生成用例',
+      step3Desc: '在接口列表中一键触发 AI 生成测试用例，自动覆盖正向、边界与异常场景。',
+      step4: '执行与验证',
+      step4Desc: '进入“接口测试”查看和编辑用例，配置构建计划实现自动化持续回归。',
+      step5: '导出与交付',
+      step5Desc: '将测试用例导出为 Excel / XMind / YAML，用于评审归档或集成到 CI/CD 流水线。'
     }
   },
   interface: {
@@ -614,6 +633,34 @@ export default {
         jenkinsUrl: 'Jenkins 构建链接',
         timestamp: '执行时间',
       },
+    },
+  },
+  project: {
+    title: '项目管理',
+    subtitle: '管理项目及其成员权限',
+    new: '新建项目',
+    edit: '编辑项目',
+    nameLabel: '项目名称',
+    descriptionLabel: '项目描述',
+    empty: '暂无项目',
+    createFirst: '创建第一个项目',
+    deleteConfirm: '确定要删除项目 "{name}" 吗？删除后项目下所有目录、接口及用例将一并删除，不可恢复。',
+    createdBy: '创建者: {name}',
+    memberCount: '{count} 名成员',
+    members: '成员管理',
+    memberManagement: '项目成员管理',
+    addMember: '添加成员',
+    addMemberBtn: '添加',
+    selectUser: '搜索用户',
+    role: '角色',
+    username: '用户名',
+    email: '邮箱',
+    joinedAt: '加入时间',
+    roles: {
+      owner: '所有者',
+      admin: '管理员',
+      member: '成员',
+      viewer: '观察者',
     },
   },
 }

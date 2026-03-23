@@ -34,6 +34,12 @@ const routes = [
         meta: { title: 'Test Generation' }
       },
       {
+        path: 'projects',
+        name: 'Projects',
+        component: () => import('@/views/project/index.vue'),
+        meta: { title: 'Projects' }
+      },
+      {
         path: 'interface',
         name: 'Interfaces',
         component: () => import('@/views/interface/index.vue'),

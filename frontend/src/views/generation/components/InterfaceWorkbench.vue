@@ -46,8 +46,8 @@
         <v-icon start icon="mdi-flask-outline" size="small"></v-icon>
         {{ $t('generation.tabResults') }}
         <v-badge
-          v-if="testCases.length > 0"
-          :content="testCases.length"
+          v-if="resultTotalCount > 0"
+          :content="resultTotalCount"
           color="secondary"
           inline
           class="ml-2"
@@ -57,10 +57,8 @@
 
     <!-- Tab 内容区 -->
     <div class="flex-grow-1 overflow-hidden bg-background">
-      <v-window v-model="activeTab" class="fill-height">
-        
         <!-- Tab 1: 配置与定义 -->
-        <v-window-item value="config" class="fill-height overflow-y-auto custom-scroll pa-6">
+        <div v-show="activeTab === 'config'" class="fill-height overflow-y-auto custom-scroll pa-6">
           <div style="max-width: 900px; margin: 0 auto;">
             
             <!-- Basic Info -->
@@ -123,10 +121,10 @@
             </v-card>
 
           </div>
-        </v-window-item>
+        </div>
 
         <!-- Tab 2: AI生成用例 -->
-        <v-window-item value="generation" class="fill-height overflow-y-auto custom-scroll pa-6">
+        <div v-show="activeTab === 'generation'" class="fill-height overflow-y-auto custom-scroll pa-6">
           <div style="max-width: 1200px; margin: 0 auto;">
             
             <div class="text-h6 font-weight-bold mb-4">{{ $t('generation.selectStrategies') }}</div>
@@ -207,109 +205,225 @@
             </div>
 
           </div>
-        </v-window-item>
+        </div>
 
         <!-- Tab 3: 测试结果 -->
-        <v-window-item value="results" class="fill-height overflow-y-auto custom-scroll pa-6">
-          <div style="max-width: 900px; margin: 0 auto;">
-            
-            <!-- UML 简图 -->
-            <v-card variant="flat" class="mb-6 bg-surface border-thin rounded-xl pa-6 d-flex justify-center align-center" style="min-height: 140px;">
-              <div class="d-flex align-center w-100 justify-center">
-                <div class="d-flex flex-column align-center">
-                  <v-icon icon="mdi-account-circle" size="48" color="primary" class="mb-2"></v-icon>
-                  <div class="text-caption font-weight-bold">{{ $t('generation.actor') }}</div>
-                </div>
-                
-                <div class="mx-6 flex-grow-1 d-flex flex-column align-center" style="max-width: 200px;">
-                  <div class="text-caption font-weight-bold text-primary mb-1">{{ form.method || 'METHOD' }}</div>
-                  <div class="w-100 border-t border-primary border-opacity-50 mb-1 position-relative" style="height: 1px;">
-                    <v-icon icon="mdi-menu-right" color="primary" size="small" style="position: absolute; right: -6px; top: -11px;"></v-icon>
-                  </div>
-                  <div class="text-caption text-truncate w-100 text-center text-medium-emphasis">{{ form.path || '/api/...' }}</div>
-                </div>
+        <div v-if="activeTab === 'results'" class="fill-height d-flex flex-column">
+          <!-- 操作栏 -->
+          <v-sheet v-if="resultTotalCount > 0" class="pa-3 border-b d-flex align-center bg-surface" elevation="0">
+            <v-spacer></v-spacer>
+            <v-btn
+              color="error"
+              variant="tonal"
+              prepend-icon="mdi-delete-outline"
+              size="small"
+              @click="handleResultBatchDelete"
+              class="text-none"
+              rounded="lg"
+            >
+              {{ $t('common.batchDelete') }}
+            </v-btn>
+            <v-menu>
+              <template v-slot:activator="{ props: menuProps }">
+                <v-btn color="secondary" variant="tonal" prepend-icon="mdi-export" v-bind="menuProps" class="text-none ml-2" size="small" rounded="lg">
+                  {{ $t('common.export') }}
+                </v-btn>
+              </template>
+              <v-list density="compact" rounded="xl" elevation="2">
+                <v-list-item @click="handleResultExport('excel')" :title="$t('common.exportToExcel')" prepend-icon="mdi-file-excel-outline" rounded="xl" class="mx-2 my-1"></v-list-item>
+                <v-list-item @click="handleResultExport('xmind')" :title="$t('common.exportToXMind')" prepend-icon="mdi-brain" rounded="xl" class="mx-2 my-1"></v-list-item>
+                <v-list-item @click="handleResultExport('json')" :title="$t('common.exportToJSON')" prepend-icon="mdi-code-json" rounded="xl" class="mx-2 my-1"></v-list-item>
+              </v-list>
+            </v-menu>
+          </v-sheet>
 
-                <div class="d-flex flex-column align-center">
-                  <v-icon icon="mdi-server-network" size="48" color="secondary" class="mb-2"></v-icon>
-                  <div class="text-caption font-weight-bold">{{ $t('generation.system') }}</div>
-                </div>
-              </div>
-            </v-card>
+          <div class="flex-grow-1 overflow-hidden">
+            <v-data-table-server
+              v-model:items-per-page="resultPageSize"
+              v-model:page="resultPage"
+              :headers="resultHeaders"
+              :items="testCases"
+              :items-length="resultTotalCount"
+              :loading="resultLoading"
+              fixed-header
+              hover
+              item-key="id"
+              class="fill-height"
+              density="comfortable"
+              @update:options="onResultTableOptions"
+            >
+              <template v-slot:header.select>
+                <v-checkbox
+                  v-model="resultAllSelected"
+                  :indeterminate="resultSelectedIds.length > 0 && resultSelectedIds.length < testCases.length"
+                  @change="toggleResultSelectAll"
+                  hide-details
+                ></v-checkbox>
+              </template>
 
-            <!-- 用例列表 -->
-            <div v-if="testCases.length > 0">
-              <v-expansion-panels variant="accordion" class="rounded-xl overflow-hidden border-thin">
-                <v-expansion-panel
-                  v-for="item in testCases"
-                  :key="item.id"
-                  elevation="0"
-                  class="bg-surface border-b"
-                >
-                  <v-expansion-panel-title class="py-3">
-                    <div class="d-flex align-center w-100 overflow-hidden">
-                      <v-icon 
-                        :icon="getCategoryIcon(item.category_name)" 
-                        size="24" 
-                        :color="getCategoryColor(item.category_name)" 
-                        class="mr-4"
-                      ></v-icon>
-                      <div class="d-flex flex-column overflow-hidden">
-                        <span class="text-body-1 font-weight-bold text-truncate">{{ item.name }}</span>
-                        <span class="text-caption text-medium-emphasis text-truncate">{{ item.description }}</span>
-                      </div>
-                      <v-spacer></v-spacer>
-                      <v-chip size="small" :color="getCategoryColor(item.category_name)" variant="tonal" class="mr-2">
-                        {{ item.category_name?.split('_')[0] || $t('generation.general') }}
-                      </v-chip>
-                    </div>
-                  </v-expansion-panel-title>
-                  <v-expansion-panel-text class="bg-grey-lighten-5 pt-4">
-                    <div class="d-flex flex-column gap-3">
-                      <div>
-                        <div class="text-caption font-weight-bold text-medium-emphasis mb-1">{{ $t('testcase.fields.requestData') }}:</div>
-                        <div class="bg-surface border-thin rounded-lg pa-4 text-caption font-monospace text-grey-darken-3">
-                          {{ JSON.stringify(item.request_data, null, 2) }}
-                        </div>
-                      </div>
-                      <div class="d-flex justify-end mt-2">
-                        <v-btn 
-                          size="small" 
-                          variant="text" 
-                          color="error" 
-                          prepend-icon="mdi-delete-outline"
-                          @click="deleteCase(item.id)"
-                          class="text-none"
-                        >
-                          {{ $t('generation.deleteCase') }}
-                        </v-btn>
-                      </div>
-                    </div>
-                  </v-expansion-panel-text>
-                </v-expansion-panel>
-              </v-expansion-panels>
-            </div>
-            
-            <div v-else class="d-flex flex-column align-center justify-center py-12 text-medium-emphasis">
-              <v-icon icon="mdi-clipboard-text-outline" size="64" class="mb-4 opacity-20"></v-icon>
-              <div class="text-h6 font-weight-medium opacity-50">{{ $t('generation.noCases') }}</div>
-              <div class="text-caption opacity-40">{{ $t('generation.switchTabTip') }}</div>
-              <v-btn color="primary" variant="text" class="mt-4" @click="activeTab = 'config'">
-                {{ $t('generation.goToGeneration') }}
-              </v-btn>
-            </div>
+              <template v-slot:item.select="{ item }">
+                <v-checkbox
+                  :model-value="resultSelectedSet.has(item.id)"
+                  @update:model-value="toggleResultItem(item.id)"
+                  hide-details
+                ></v-checkbox>
+              </template>
+
+              <template v-slot:item.test_type="{ item }">
+                <v-chip v-if="item.test_type" size="small" label :color="getTestTypeColor(item.test_type)">
+                  {{ getTestTypeTitle(item.test_type) }}
+                </v-chip>
+                <span v-else class="text-grey">-</span>
+              </template>
+
+              <template v-slot:item.category_name="{ item }">
+                <v-chip v-if="item.category_name" size="small" label color="info" variant="tonal">
+                  {{ item.category_name }}
+                </v-chip>
+                <span v-else class="text-grey text-caption">-</span>
+              </template>
+
+              <template v-slot:item.test_field="{ item }">
+                <code v-if="item.test_field" class="text-grey-darken-3 bg-grey-lighten-4 px-1 rounded">{{ item.test_field }}</code>
+                <span v-else class="text-grey">-</span>
+              </template>
+
+              <template v-slot:item.actions="{ item }">
+                <v-tooltip location="top" :text="$t('common.detail')">
+                  <template v-slot:activator="{ props: tipProps }">
+                    <v-btn v-bind="tipProps" icon="mdi-eye" variant="text" size="small" color="info" @click="openResultDetail(item)"></v-btn>
+                  </template>
+                </v-tooltip>
+                <v-tooltip location="top" :text="$t('common.delete')">
+                  <template v-slot:activator="{ props: tipProps }">
+                    <v-btn v-bind="tipProps" icon="mdi-delete" variant="text" size="small" color="error" @click="openResultDeleteDialog(item)"></v-btn>
+                  </template>
+                </v-tooltip>
+              </template>
+
+              <template v-slot:no-data>
+                <div class="d-flex flex-column align-center justify-center py-12 text-medium-emphasis">
+                  <v-icon icon="mdi-clipboard-text-outline" size="64" class="mb-4 opacity-20"></v-icon>
+                  <div class="text-h6 font-weight-medium opacity-50">{{ $t('generation.noCases') }}</div>
+                  <div class="text-caption opacity-40">{{ $t('generation.switchTabTip') }}</div>
+                  <v-btn color="primary" variant="text" class="mt-4" @click="activeTab = 'generation'">
+                    {{ $t('generation.goToGeneration') }}
+                  </v-btn>
+                </div>
+              </template>
+            </v-data-table-server>
           </div>
-        </v-window-item>
-      </v-window>
+
+          <!-- Detail Dialog -->
+          <v-dialog v-model="resultDetailDialog" max-width="960px" scrollable>
+            <v-card class="rounded-xl">
+              <v-toolbar color="primary" density="compact" class="px-2">
+                <v-toolbar-title class="text-subtitle-1 font-weight-bold text-white">{{ $t('common.detail') }}</v-toolbar-title>
+                <v-spacer />
+                <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="resultDetailDialog = false" />
+              </v-toolbar>
+              <v-card-text v-if="resultDetailItem" class="pa-0" style="max-height: 75vh; overflow-y: auto;">
+                <div class="px-6 pt-5 pb-3">
+                  <div class="text-h6 font-weight-bold" style="word-break: break-word;">{{ resultDetailItem.name }}</div>
+                  <div class="text-caption text-medium-emphasis mt-1">ID: {{ resultDetailItem.id }}</div>
+                </div>
+                <v-divider />
+                <div class="px-6 py-4">
+                  <v-row dense>
+                    <v-col cols="6" sm="4">
+                      <div class="detail-field">
+                        <div class="detail-label">{{ $t('testcase.fields.testType') }}</div>
+                        <v-chip v-if="resultDetailItem.test_type" size="small" label :color="getTestTypeColor(resultDetailItem.test_type)">
+                          {{ getTestTypeTitle(resultDetailItem.test_type) }}
+                        </v-chip>
+                        <span v-else class="text-medium-emphasis">-</span>
+                      </div>
+                    </v-col>
+                    <v-col cols="6" sm="4">
+                      <div class="detail-field">
+                        <div class="detail-label">{{ $t('testcase.fields.category') }}</div>
+                        <div class="detail-value">{{ resultDetailItem.category_name || '-' }}</div>
+                      </div>
+                    </v-col>
+                    <v-col cols="6" sm="4">
+                      <div class="detail-field">
+                        <div class="detail-label">{{ $t('testcase.fields.testField') }}</div>
+                        <code v-if="resultDetailItem.test_field" class="text-body-2">{{ resultDetailItem.test_field }}</code>
+                        <span v-else class="text-medium-emphasis">-</span>
+                      </div>
+                    </v-col>
+                    <v-col cols="6" sm="4">
+                      <div class="detail-field">
+                        <div class="detail-label">{{ $t('testcase.fields.createdAt') }}</div>
+                        <div class="detail-value">{{ resultDetailItem.created_at || '-' }}</div>
+                      </div>
+                    </v-col>
+                  </v-row>
+                </div>
+                <template v-if="resultDetailItem.description">
+                  <v-divider />
+                  <div class="px-6 py-4">
+                    <div class="detail-label mb-2">{{ $t('testcase.fields.description') }}</div>
+                    <div class="text-body-2" style="word-break: break-word; white-space: pre-wrap;">{{ resultDetailItem.description }}</div>
+                  </div>
+                </template>
+                <v-divider />
+                <div class="px-6 py-4">
+                  <v-row>
+                    <v-col cols="12" md="6">
+                      <div class="detail-label mb-2">{{ $t('testcase.fields.requestData') }}</div>
+                      <pre class="detail-json-block">{{ resultDetailItem.request_data ? JSON.stringify(resultDetailItem.request_data, null, 2) : '{}' }}</pre>
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <div class="detail-label mb-2">{{ $t('testcase.fields.expectedValue') }}</div>
+                      <pre class="detail-json-block">{{ resultDetailItem.expected_value ? JSON.stringify(resultDetailItem.expected_value, null, 2) : '{}' }}</pre>
+                    </v-col>
+                  </v-row>
+                </div>
+              </v-card-text>
+            </v-card>
+          </v-dialog>
+
+          <!-- Delete Confirmation -->
+          <v-dialog v-model="resultDeleteDialog" max-width="400px">
+            <v-card class="rounded-xl">
+              <v-card-title class="text-subtitle-1 font-weight-bold pa-4 bg-error text-white">{{ $t('common.delete') }}</v-card-title>
+              <v-card-text class="pa-4 text-body-2">
+                {{ resultDeleteName ? $t('common.confirmDelete', { name: resultDeleteName }) : '' }}
+              </v-card-text>
+              <v-card-actions class="px-6 pb-4">
+                <v-spacer></v-spacer>
+                <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="resultDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+                <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmResultDelete">{{ $t('common.delete') }}</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
+
+          <!-- Batch Delete Confirmation -->
+          <v-dialog v-model="resultBatchDeleteDialog" max-width="400px">
+            <v-card class="rounded-xl">
+              <v-card-title class="text-subtitle-1 font-weight-bold pa-4 bg-error text-white">{{ $t('common.batchDelete') }}</v-card-title>
+              <v-card-text class="pa-4 text-body-2">
+                {{ $t('common.confirmBatchDelete', { count: resultSelectedIds.length }) }}
+              </v-card-text>
+              <v-card-actions class="px-6 pb-4">
+                <v-spacer></v-spacer>
+                <v-btn variant="text" color="grey-darken-1" rounded="lg" class="text-none" @click="resultBatchDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+                <v-btn color="error" variant="flat" rounded="lg" class="text-none ml-3" @click="confirmResultBatchDelete">{{ $t('common.delete') }}</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-dialog>
+        </div>
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { updateInterface, generateTestCases, getInterfaces } from '@/api/interface'
-import { getTestCases, deleteTestCase } from '@/api/testcase'
+import { getTestCasesPaginated, deleteTestCase, exportTestCases, batchDeleteTestCases } from '@/api/testcase'
 import { getCategories } from '@/api/category'
 import type { Interface } from '@/api/interface'
 import type { TestCase } from '@/api/testcase'
@@ -338,6 +452,149 @@ const strategies = ref<Record<string, any>>({
 })
 
 // 图标映射
+// --- Results tab: pagination state ---
+const resultPage = ref(1)
+const resultPageSize = ref(20)
+const resultTotalCount = ref(0)
+const resultLoading = ref(false)
+const resultSortBy = ref<{ key: string; order: string }[]>([])
+
+const loadTestCases = async () => {
+  if (!props.interfaceId) return
+  resultLoading.value = true
+  try {
+    let ordering = '-created_at'
+    if (resultSortBy.value.length > 0) {
+      const s = resultSortBy.value[0]
+      ordering = s.order === 'desc' ? `-${s.key}` : s.key
+    }
+    const res = await getTestCasesPaginated({
+      interface: props.interfaceId,
+      page: resultPage.value,
+      page_size: resultPageSize.value,
+      ordering,
+    })
+    testCases.value = res.results
+    resultTotalCount.value = res.count
+  } catch (e) {
+    console.error(e)
+  } finally {
+    resultLoading.value = false
+  }
+}
+
+const onResultTableOptions = (options: any) => {
+  resultPage.value = options.page
+  resultPageSize.value = options.itemsPerPage
+  if (options.sortBy?.length > 0) {
+    resultSortBy.value = options.sortBy
+  } else {
+    resultSortBy.value = []
+  }
+  loadTestCases()
+}
+
+// --- Results tab: table headers ---
+const resultHeaders = computed(() => [
+  { title: '', key: 'select', sortable: false, width: '50px', align: 'center' as const },
+  { title: 'ID', key: 'id', align: 'start' as const, width: '70px' },
+  { title: t('testcase.fields.name'), key: 'name', minWidth: '220px' },
+  { title: t('testcase.fields.testType'), key: 'test_type', width: '110px' },
+  { title: t('testcase.fields.category'), key: 'category_name', width: '140px' },
+  { title: t('testcase.fields.testField'), key: 'test_field', width: '130px' },
+  { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' as const, width: '120px' },
+])
+
+// --- Results tab: selection state ---
+const resultSelectedSet = ref(new Set<number>())
+const resultSelectedIds = computed(() => Array.from(resultSelectedSet.value))
+const resultAllSelected = computed(() => testCases.value.length > 0 && resultSelectedIds.value.length === testCases.value.length)
+
+const toggleResultItem = (id: number) => {
+  if (resultSelectedSet.value.has(id)) {
+    resultSelectedSet.value.delete(id)
+  } else {
+    resultSelectedSet.value.add(id)
+  }
+}
+
+const toggleResultSelectAll = () => {
+  if (resultSelectedIds.value.length === testCases.value.length) {
+    resultSelectedSet.value.clear()
+  } else {
+    resultSelectedSet.value = new Set(testCases.value.map(c => c.id))
+  }
+}
+
+// --- Results tab: detail dialog ---
+const resultDetailDialog = ref(false)
+const resultDetailItem = ref<TestCase | null>(null)
+const openResultDetail = (item: TestCase) => {
+  resultDetailItem.value = item
+  resultDetailDialog.value = true
+}
+
+// --- Results tab: delete ---
+const resultDeleteDialog = ref(false)
+const resultDeleteId = ref<number | null>(null)
+const resultDeleteName = ref('')
+const resultBatchDeleteDialog = ref(false)
+
+const openResultDeleteDialog = (item: TestCase) => {
+  resultDeleteId.value = item.id
+  resultDeleteName.value = item.name
+  resultDeleteDialog.value = true
+}
+
+const confirmResultDelete = async () => {
+  if (resultDeleteId.value) {
+    await deleteTestCase(resultDeleteId.value)
+    resultDeleteDialog.value = false
+    loadTestCases()
+  }
+}
+
+const handleResultBatchDelete = () => {
+  if (resultSelectedIds.value.length === 0) return
+  resultBatchDeleteDialog.value = true
+}
+
+const confirmResultBatchDelete = async () => {
+  if (resultSelectedIds.value.length > 0) {
+    await batchDeleteTestCases(resultSelectedIds.value)
+    resultSelectedSet.value.clear()
+    resultBatchDeleteDialog.value = false
+    loadTestCases()
+  }
+}
+
+// --- Results tab: export ---
+const handleResultExport = async (format: 'excel' | 'xmind' | 'json') => {
+  const ids = resultSelectedIds.value.length > 0
+    ? resultSelectedIds.value
+    : testCases.value.map(c => c.id)
+  if (ids.length === 0) return
+  try {
+    const blob = await exportTestCases(format, ids)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `test_cases.${format === 'excel' ? 'xlsx' : format}`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+// --- Results tab: test type helpers ---
+const getTestTypeColor = (type: string) => {
+  const map: Record<string, string> = { positive: 'green', negative: 'red', boundary: 'orange', security: 'purple' }
+  return map[type] || 'grey'
+}
+const getTestTypeTitle = (type: string) => t(`testcase.testType.${type}`, type)
+
 const getCategoryIcon = (name?: string) => {
   if (!name) return 'mdi-checkbox-blank-circle-outline'
   if (name.includes('Positive')) return 'mdi-check-circle-outline'
@@ -356,16 +613,12 @@ const getCategoryColor = (name?: string) => {
   return 'grey'
 }
 
-// 加载数据
-const loadData = async () => {
+// 加载接口定义
+const loadInterfaceData = async () => {
   if (!props.interfaceId) return
   loading.value = true
   try {
-    const [ifaces, cases] = await Promise.all([
-      getInterfaces({ id: props.interfaceId }), 
-      getTestCases({ interface: props.interfaceId, no_page: true })
-    ])
-    
+    const ifaces = await getInterfaces({ id: props.interfaceId })
     const iface = ifaces.find(i => i.id === props.interfaceId)
     if (iface) {
       form.value = { ...iface }
@@ -373,13 +626,15 @@ const loadData = async () => {
         form.value.schema_yaml = JSON.stringify(iface.schema, null, 2)
       }
     }
-    
-    testCases.value = cases
   } catch (e) {
     console.error(e)
   } finally {
     loading.value = false
   }
+}
+
+const loadData = async () => {
+  await loadInterfaceData()
 }
 
 // 加载分类并分组
@@ -465,10 +720,9 @@ const startGenerate = async () => {
   generating.value = true
   try {
     await generateTestCases(props.interfaceId, { category_ids: selectedCategories.value })
-    // 自动切换到结果 Tab
     activeTab.value = 'results'
-    // 立即加载一次数据，后台生成完成后用户可手动刷新
-    await loadData()
+    resultPage.value = 1
+    await loadTestCases()
   } catch (e) {
     console.error(e)
   } finally {
@@ -476,17 +730,14 @@ const startGenerate = async () => {
   }
 }
 
-const deleteCase = async (id: number) => {
-  if (confirm(t('common.confirmDelete', { name: 'Case' }))) {
-    await deleteTestCase(id)
-    loadData()
-  }
-}
-
 watch(() => props.interfaceId, () => {
   loadData()
-  selectedCategories.value = [] // 重置选择
-  activeTab.value = 'config' // 切回配置页
+  selectedCategories.value = []
+  resultSelectedSet.value.clear()
+  resultPage.value = 1
+  resultTotalCount.value = 0
+  testCases.value = []
+  activeTab.value = 'config'
 })
 
 onMounted(() => {
@@ -501,4 +752,32 @@ onMounted(() => {
 .letter-spacing-1 { letter-spacing: 1px; }
 .custom-scroll::-webkit-scrollbar { width: 6px; }
 .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+
+.detail-field { margin-bottom: 12px; }
+.detail-label {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 4px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.detail-value {
+  font-size: 0.875rem;
+  color: rgba(var(--v-theme-on-surface), 0.87);
+}
+.detail-json-block {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+}
 </style>

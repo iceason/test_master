@@ -1,139 +1,67 @@
 <template>
   <v-container class="fill-height align-start py-8 px-6" style="max-width: 1400px;">
-    <!-- 欢迎头 -->
+    <!-- Welcome header -->
     <v-row class="mb-8">
       <v-col cols="12">
         <div class="d-flex flex-column">
-          <h1 class="text-h4 font-weight-bold text-on-surface mb-2">Welcome back, {{ userStore.username || 'Admin' }}</h1>
-          <p class="text-body-1 text-medium-emphasis" style="max-width: 800px;">
+          <h1 class="text-h4 font-weight-bold text-on-surface mb-2">
+            {{ $t('intro.welcome', { name: userStore.username || 'Admin' }) }}
+          </h1>
+          <p class="text-body-1 text-medium-emphasis" style="max-width: 900px;">
             {{ $t('intro.subtitle') }}
           </p>
         </div>
       </v-col>
     </v-row>
 
-    <!-- 核心功能卡片 -->
+    <!-- Feature cards -->
     <v-row class="mb-10">
-      <v-col cols="12" md="4">
-        <v-card 
-          link 
-          to="/generation" 
+      <v-col v-for="(feat, idx) in features" :key="idx" cols="12" sm="6" lg="4">
+        <v-card
+          link
+          :to="feat.to"
           variant="elevated"
           elevation="1"
           class="fill-height rounded-xl overflow-hidden transition-swing"
           hover
         >
-          <div class="pa-6 d-flex flex-column fill-height">
+          <div class="pa-5 d-flex flex-column fill-height">
             <div class="d-flex align-start justify-space-between mb-4">
-              <v-avatar color="primary-container" size="56" rounded="lg">
-                <v-icon icon="mdi-creation" size="32" color="on-primary-container"></v-icon>
+              <v-avatar :color="feat.avatarColor" size="52" rounded="lg">
+                <v-icon :icon="feat.icon" size="28" :color="feat.iconColor"></v-icon>
               </v-avatar>
-              <v-icon icon="mdi-arrow-top-right" color="medium-emphasis"></v-icon>
+              <v-icon icon="mdi-arrow-top-right" color="medium-emphasis" size="18"></v-icon>
             </div>
-            
-            <h3 class="text-h6 font-weight-bold mb-2 text-on-surface">{{ $t('intro.features.aiGeneration.title') }}</h3>
-            <p class="text-body-2 text-medium-emphasis mb-6 flex-grow-1">
-              {{ $t('intro.features.aiGeneration.desc') }}
-            </p>
-            
-            <v-btn color="primary" variant="flat" elevation="2" block class="text-none" rounded="lg">
-              Start Generating
-            </v-btn>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="4">
-        <v-card 
-          link 
-          to="/interface" 
-          variant="elevated"
-          elevation="1"
-          class="fill-height rounded-xl overflow-hidden transition-swing"
-          hover
-        >
-          <div class="pa-6 d-flex flex-column fill-height">
-            <div class="d-flex align-start justify-space-between mb-4">
-              <v-avatar color="secondary-container" size="56" rounded="lg">
-                <v-icon icon="mdi-api" size="32" color="on-secondary-container"></v-icon>
-              </v-avatar>
-              <v-icon icon="mdi-arrow-top-right" color="medium-emphasis"></v-icon>
-            </div>
-            
-            <h3 class="text-h6 font-weight-bold mb-2 text-on-surface">{{ $t('intro.features.apiManagement.title') }}</h3>
-            <p class="text-body-2 text-medium-emphasis mb-6 flex-grow-1">
-              {{ $t('intro.features.apiManagement.desc') }}
-            </p>
-            
-            <v-btn variant="outlined" color="primary" block class="text-none" rounded="lg">
-              Manage APIs
-            </v-btn>
-          </div>
-        </v-card>
-      </v-col>
-
-      <v-col cols="12" md="4">
-        <v-card 
-          link 
-          to="/testcase" 
-          variant="elevated"
-          elevation="1"
-          class="fill-height rounded-xl overflow-hidden transition-swing"
-          hover
-        >
-          <div class="pa-6 d-flex flex-column fill-height">
-            <div class="d-flex align-start justify-space-between mb-4">
-              <v-avatar color="tertiary-container" size="56" rounded="lg">
-                <v-icon icon="mdi-export" size="32" color="on-tertiary-container"></v-icon>
-              </v-avatar>
-              <v-icon icon="mdi-arrow-top-right" color="medium-emphasis"></v-icon>
-            </div>
-            
-            <h3 class="text-h6 font-weight-bold mb-2 text-on-surface">{{ $t('intro.features.export.title') }}</h3>
-            <p class="text-body-2 text-medium-emphasis mb-6 flex-grow-1">
-              {{ $t('intro.features.export.desc') }}
-            </p>
-            
-            <v-btn variant="outlined" color="primary" block class="text-none" rounded="lg">
-              View & Export
-            </v-btn>
+            <h3 class="text-subtitle-1 font-weight-bold mb-2 text-on-surface">{{ $t(feat.title) }}</h3>
+            <p class="text-body-2 text-medium-emphasis flex-grow-1">{{ $t(feat.desc) }}</p>
           </div>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- 快速入门指南 -->
+    <!-- Quick start guide -->
     <v-row>
       <v-col cols="12">
-        <div class="d-flex align-center mb-6">
+        <div class="d-flex align-center mb-5">
           <v-icon icon="mdi-school-outline" class="mr-2" color="primary"></v-icon>
           <h2 class="text-h5 font-weight-bold text-on-surface">{{ $t('intro.guide.title') }}</h2>
         </div>
-        
+
         <v-card variant="outlined" class="rounded-xl bg-surface border-opacity-12">
           <v-row no-gutters>
-            <v-col cols="12" md="3" class="pa-6 border-e d-flex flex-column position-relative guide-step">
-              <div class="text-overline font-weight-bold text-primary mb-2">Step 01</div>
-              <div class="text-subtitle-1 font-weight-bold mb-2">{{ $t('intro.guide.step1') }}</div>
-              <p class="text-body-2 text-medium-emphasis">{{ $t('intro.guide.step1Desc') }}</p>
-            </v-col>
-            
-            <v-col cols="12" md="3" class="pa-6 border-e d-flex flex-column position-relative guide-step">
-              <div class="text-overline font-weight-bold text-primary mb-2">Step 02</div>
-              <div class="text-subtitle-1 font-weight-bold mb-2">{{ $t('intro.guide.step2') }}</div>
-              <p class="text-body-2 text-medium-emphasis">{{ $t('intro.guide.step2Desc') }}</p>
-            </v-col>
-            
-            <v-col cols="12" md="3" class="pa-6 border-e d-flex flex-column position-relative guide-step">
-              <div class="text-overline font-weight-bold text-primary mb-2">Step 03</div>
-              <div class="text-subtitle-1 font-weight-bold mb-2">{{ $t('intro.guide.step3') }}</div>
-              <p class="text-body-2 text-medium-emphasis">{{ $t('intro.guide.step3Desc') }}</p>
-            </v-col>
-            
-            <v-col cols="12" md="3" class="pa-6 d-flex flex-column guide-step">
-              <div class="text-overline font-weight-bold text-success mb-2">Step 04</div>
-              <div class="text-subtitle-1 font-weight-bold mb-2">{{ $t('intro.guide.step4') }}</div>
-              <p class="text-body-2 text-medium-emphasis">{{ $t('intro.guide.step4Desc') }}</p>
+            <v-col
+              v-for="(step, i) in steps"
+              :key="i"
+              cols="12"
+              :md="stepColSize"
+              class="pa-5 d-flex flex-column position-relative guide-step"
+              :class="{ 'border-e': i < steps.length - 1 }"
+            >
+              <div class="text-overline font-weight-bold mb-2" :class="i === steps.length - 1 ? 'text-success' : 'text-primary'">
+                Step {{ String(i + 1).padStart(2, '0') }}
+              </div>
+              <div class="text-subtitle-1 font-weight-bold mb-2">{{ $t(step.title) }}</div>
+              <p class="text-body-2 text-medium-emphasis">{{ $t(step.desc) }}</p>
             </v-col>
           </v-row>
         </v-card>
@@ -143,9 +71,75 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
+
+const features = [
+  {
+    icon: 'mdi-briefcase-outline',
+    avatarColor: 'primary-container',
+    iconColor: 'on-primary-container',
+    title: 'intro.features.projectManagement.title',
+    desc: 'intro.features.projectManagement.desc',
+    to: '/projects',
+  },
+  {
+    icon: 'mdi-api',
+    avatarColor: 'secondary-container',
+    iconColor: 'on-secondary-container',
+    title: 'intro.features.apiManagement.title',
+    desc: 'intro.features.apiManagement.desc',
+    to: '/interface',
+  },
+  {
+    icon: 'mdi-creation',
+    avatarColor: 'tertiary-container',
+    iconColor: 'on-tertiary-container',
+    title: 'intro.features.aiGeneration.title',
+    desc: 'intro.features.aiGeneration.desc',
+    to: '/generation',
+  },
+  {
+    icon: 'mdi-flask-outline',
+    avatarColor: 'primary-container',
+    iconColor: 'on-primary-container',
+    title: 'intro.features.interfaceTesting.title',
+    desc: 'intro.features.interfaceTesting.desc',
+    to: '/testcase',
+  },
+  {
+    icon: 'mdi-play-circle-outline',
+    avatarColor: 'secondary-container',
+    iconColor: 'on-secondary-container',
+    title: 'intro.features.continuousBuild.title',
+    desc: 'intro.features.continuousBuild.desc',
+    to: '/testing/plans',
+  },
+  {
+    icon: 'mdi-export',
+    avatarColor: 'tertiary-container',
+    iconColor: 'on-tertiary-container',
+    title: 'intro.features.export.title',
+    desc: 'intro.features.export.desc',
+    to: '/testcase',
+  },
+]
+
+const steps = [
+  { title: 'intro.guide.step1', desc: 'intro.guide.step1Desc' },
+  { title: 'intro.guide.step2', desc: 'intro.guide.step2Desc' },
+  { title: 'intro.guide.step3', desc: 'intro.guide.step3Desc' },
+  { title: 'intro.guide.step4', desc: 'intro.guide.step4Desc' },
+  { title: 'intro.guide.step5', desc: 'intro.guide.step5Desc' },
+]
+
+const stepColSize = computed(() => {
+  const len = steps.length
+  if (len <= 4) return 12 / len
+  return undefined
+})
 </script>
 
 <style scoped>

@@ -46,6 +46,10 @@ export default {
     import: 'Import',
     systemSettings: 'System Settings',
     emailTemplates: 'Email Templates',
+    projects: 'Projects',
+    projectAndPermission: 'Projects & Permissions',
+    interfaceTesting: 'Interface Testing',
+    continuousBuild: 'Continuous Build',
     environments: 'Environments',
     executionRecords: 'Execution Records',
     language: {
@@ -75,32 +79,47 @@ export default {
     copyright: '© 2025 Test Master. All rights reserved.',
   },
   intro: {
-    title: 'Automated Test Case Generator',
-    subtitle: 'Streamline your QA process with AI-powered test case generation.',
+    welcome: 'Welcome back, {name}',
+    title: 'Test Master — All-in-One API Testing Platform',
+    subtitle: 'From project creation, API management, AI test generation, to automated execution and continuous builds — a complete API quality assurance solution.',
     features: {
+      projectManagement: {
+        title: 'Project Management',
+        desc: 'Create project spaces and manage team members with role-based permissions to keep your APIs and test cases well-organized.'
+      },
       apiManagement: {
         title: 'API Management',
-        desc: 'Organize and manage your API definitions in one place. Support manual entry and schema import.'
+        desc: 'Centrally manage API definitions with manual entry and one-click OpenAPI / Swagger schema import.'
       },
       aiGeneration: {
         title: 'AI Generation',
-        desc: 'Generate comprehensive test cases automatically using advanced AI algorithms based on your API schemas.'
+        desc: 'Automatically generate test cases from API schemas using AI, covering positive, boundary, and edge-case scenarios.'
+      },
+      interfaceTesting: {
+        title: 'Interface Testing',
+        desc: 'Manage and edit test cases online with category filters, batch operations, and execution history tracking.'
+      },
+      continuousBuild: {
+        title: 'Continuous Build',
+        desc: 'Integrate with Jenkins and other CI executors to configure build plans for automated regression testing.'
       },
       export: {
         title: 'Flexible Export',
-        desc: 'Export your test cases to various formats including Excel, XMind, and JSON for seamless integration.'
+        desc: 'Export test cases to Excel, XMind, YAML and more for offline review or integration with other systems.'
       }
     },
     guide: {
-      title: 'User Guide',
-      step1: 'Define Interface',
-      step1Desc: 'Go to "Interfaces" page, create a new interface and input the API path, method, and schema definition.',
-      step2: 'Generate Cases',
-      step2Desc: 'Click the "Test Tube" icon in the interface list to trigger AI test case generation.',
-      step3: 'Review & Edit',
-      step3Desc: 'Navigate to "Test Cases" page to review the generated cases. You can edit or delete them as needed.',
-      step4: 'Export',
-      step4Desc: 'Use the "Export" button to download your test plan in your preferred format.'
+      title: 'Quick Start',
+      step1: 'Create Project',
+      step1Desc: 'Create a new project in "Project Management" and invite team members to manage APIs and environments together.',
+      step2: 'Import APIs',
+      step2Desc: 'Go to "Interface Management" to manually create or batch-import API definitions via OpenAPI files.',
+      step3: 'Generate Cases',
+      step3Desc: 'Trigger AI test case generation from the interface list, automatically covering positive, boundary, and edge-case scenarios.',
+      step4: 'Execute & Verify',
+      step4Desc: 'Review and edit cases in "Interface Testing", configure build plans for automated continuous regression.',
+      step5: 'Export & Deliver',
+      step5Desc: 'Export test cases as Excel / XMind / YAML for review, archiving, or CI/CD pipeline integration.'
     }
   },
   interface: {
@@ -614,6 +633,34 @@ export default {
         jenkinsUrl: 'Jenkins Build URL',
         timestamp: 'Execution Time',
       },
+    },
+  },
+  project: {
+    title: 'Project Management',
+    subtitle: 'Manage projects and member permissions',
+    new: 'New Project',
+    edit: 'Edit Project',
+    nameLabel: 'Project Name',
+    descriptionLabel: 'Description',
+    empty: 'No projects yet',
+    createFirst: 'Create your first project',
+    deleteConfirm: 'Are you sure you want to delete project "{name}"? All directories, interfaces, and test cases under this project will be permanently removed.',
+    createdBy: 'Created by: {name}',
+    memberCount: '{count} members',
+    members: 'Members',
+    memberManagement: 'Project Members',
+    addMember: 'Add Member',
+    addMemberBtn: 'Add',
+    selectUser: 'Search user',
+    role: 'Role',
+    username: 'Username',
+    email: 'Email',
+    joinedAt: 'Joined At',
+    roles: {
+      owner: 'Owner',
+      admin: 'Admin',
+      member: 'Member',
+      viewer: 'Viewer',
     },
   },
 }

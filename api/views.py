@@ -3,17 +3,18 @@ from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse
-from .models import Directory, Interface, TestCase, TestCaseCategory, Environment, TestExecutionBatch, TestExecution
+from .models import Directory, Interface, TestCase, TestCaseCategory, Environment, TestExecutionBatch, TestExecution, ProjectMember
 from .serializers import (DirectorySerializer, InterfaceSerializer, TestCaseSerializer, TestCaseCategorySerializer,
                           EnvironmentSerializer, TestExecutionBatchSerializer, TestExecutionBatchListSerializer,
-                          TestExecutionSerializer)
+                          TestExecutionSerializer,
+                          ProjectSerializer, ProjectMemberSerializer, UserSimpleSerializer)
+from rest_framework.permissions import IsAuthenticated, BasePermission
 from .test_case_generator import TestCaseGenerator
 from .exporters import TestCasesExporter
 from asgiref.sync import async_to_sync
 from django.contrib.auth import authenticate
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
@@ -700,3 +701,156 @@ class TestExecutionViewSet(viewsets.ModelViewSet):
                 
         except Exception as e:
             return Response({'error': f'执行测试用例失败: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ---------------------------------------------------------------------------
+# 项目管理模块
+# ---------------------------------------------------------------------------
+
+User = get_user_model()
+
+
+class IsProjectAdminOrOwner(BasePermission):
+    """项目写操作权限：仅 owner / admin 可执行写操作"""
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in ('GET', 'HEAD', 'OPTIONS'):
+            return True
+        if request.user.is_superuser:
+            return True
+        project = obj if isinstance(obj, Directory) else getattr(obj, 'project', None)
+        if project is None:
+            return False
+        return ProjectMember.objects.filter(
+            project=project, user=request.user, role__in=['owner', 'admin']
+        ).exists()
+
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    """项目管理（基于根级 Directory）"""
+    queryset = Directory.objects.filter(parent__isnull=True).prefetch_related('members')
+    serializer_class = ProjectSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering_fields = ['id', 'name', 'order', 'created_at']
+    ordering = ['-created_at']
+    pagination_class = None
+
+    def perform_create(self, serializer):
+        project = serializer.save(parent=None, created_by=self.request.user)
+        ProjectMember.objects.create(project=project, user=self.request.user, role='owner')
+
+    def perform_update(self, serializer):
+        serializer.save(parent=None)
+
+    # ----- 成员管理 actions -----
+
+    @action(detail=True, methods=['get'])
+    def members(self, request, pk=None):
+        """获取项目成员列表"""
+        project = self.get_object()
+        members = ProjectMember.objects.filter(project=project).select_related('user')
+        serializer = ProjectMemberSerializer(members, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def add_member(self, request, pk=None):
+        """添加项目成员"""
+        project = self.get_object()
+
+        if not request.user.is_superuser and not ProjectMember.objects.filter(
+            project=project, user=request.user, role__in=['owner', 'admin']
+        ).exists():
+            return Response({'error': '无权限操作'}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        role = request.data.get('role', 'member')
+
+        if not user_id:
+            return Response({'error': '缺少 user_id 参数'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': '用户不存在'}, status=status.HTTP_404_NOT_FOUND)
+
+        if ProjectMember.objects.filter(project=project, user=user).exists():
+            return Response({'error': '该用户已是项目成员'}, status=status.HTTP_400_BAD_REQUEST)
+
+        member = ProjectMember.objects.create(project=project, user=user, role=role)
+        return Response(ProjectMemberSerializer(member).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def remove_member(self, request, pk=None):
+        """移除项目成员"""
+        project = self.get_object()
+
+        if not request.user.is_superuser and not ProjectMember.objects.filter(
+            project=project, user=request.user, role__in=['owner', 'admin']
+        ).exists():
+            return Response({'error': '无权限操作'}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': '缺少 user_id 参数'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            member = ProjectMember.objects.get(project=project, user_id=user_id)
+        except ProjectMember.DoesNotExist:
+            return Response({'error': '该用户不是项目成员'}, status=status.HTTP_404_NOT_FOUND)
+
+        if member.role == 'owner' and ProjectMember.objects.filter(project=project, role='owner').count() <= 1:
+            return Response({'error': '不能移除项目唯一的所有者'}, status=status.HTTP_400_BAD_REQUEST)
+
+        member.delete()
+        return Response({'status': 'success'})
+
+    @action(detail=True, methods=['post'])
+    def update_member_role(self, request, pk=None):
+        """更新成员角色"""
+        project = self.get_object()
+
+        if not request.user.is_superuser and not ProjectMember.objects.filter(
+            project=project, user=request.user, role__in=['owner', 'admin']
+        ).exists():
+            return Response({'error': '无权限操作'}, status=status.HTTP_403_FORBIDDEN)
+
+        user_id = request.data.get('user_id')
+        new_role = request.data.get('role')
+
+        if not user_id or not new_role:
+            return Response({'error': '缺少 user_id 或 role 参数'}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_roles = [c[0] for c in ProjectMember.ROLE_CHOICES]
+        if new_role not in valid_roles:
+            return Response({'error': f'无效角色，可选: {valid_roles}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            member = ProjectMember.objects.get(project=project, user_id=user_id)
+        except ProjectMember.DoesNotExist:
+            return Response({'error': '该用户不是项目成员'}, status=status.HTTP_404_NOT_FOUND)
+
+        if member.role == 'owner' and new_role != 'owner':
+            if ProjectMember.objects.filter(project=project, role='owner').count() <= 1:
+                return Response({'error': '不能降级项目唯一的所有者'}, status=status.HTTP_400_BAD_REQUEST)
+
+        member.role = new_role
+        member.save()
+        return Response(ProjectMemberSerializer(member).data)
+
+
+class UserListView(APIView):
+    """系统用户列表（用于成员选择器）"""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        search = request.query_params.get('search', '').strip()
+        qs = User.objects.filter(is_active=True).order_by('username')
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(Q(username__icontains=search) | Q(email__icontains=search))
+        serializer = UserSimpleSerializer(qs[:50], many=True)
+        return Response(serializer.data)

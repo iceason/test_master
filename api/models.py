@@ -8,6 +8,13 @@ class Directory(models.Model):
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sub_directories', verbose_name="父级目录")
     level = models.IntegerField(default=1, verbose_name="层级")
     order = models.IntegerField(default=0, verbose_name="排序")
+    description = models.TextField(blank=True, default='', verbose_name="项目描述")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='created_directories',
+        verbose_name="创建人",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, verbose_name="创建时间")
 
     class Meta:
         verbose_name = "目录"
@@ -27,6 +34,40 @@ class Directory(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProjectMember(models.Model):
+    """项目成员（权限管理）"""
+    ROLE_CHOICES = (
+        ('owner', '所有者'),
+        ('admin', '管理员'),
+        ('member', '成员'),
+        ('viewer', '观察者'),
+    )
+
+    project = models.ForeignKey(
+        Directory, on_delete=models.CASCADE, related_name='members',
+        verbose_name="所属项目",
+        limit_choices_to={'parent__isnull': True},
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='project_memberships', verbose_name="用户",
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='member', verbose_name="角色")
+    joined_at = models.DateTimeField(auto_now_add=True, verbose_name="加入时间")
+
+    class Meta:
+        verbose_name = "项目成员"
+        verbose_name_plural = verbose_name
+        unique_together = ('project', 'user')
+        ordering = ['joined_at']
+        indexes = [
+            models.Index(fields=['project', 'user']),
+        ]
+
+    def __str__(self):
+        return f"{self.user} - {self.project.name} ({self.get_role_display()})"
 
 
 class Interface(models.Model):

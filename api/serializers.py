@@ -1,7 +1,10 @@
 from rest_framework import serializers
-from .models import Directory, Interface, TestCase, TestCaseCategory, Environment, TestExecutionBatch, TestExecution
+from django.contrib.auth import get_user_model
+from .models import Directory, Interface, TestCase, TestCaseCategory, Environment, TestExecutionBatch, TestExecution, ProjectMember
 import yaml
 import json
+
+User = get_user_model()
 
 class RecursiveField(serializers.Serializer):
     def to_representation(self, value):
@@ -120,3 +123,45 @@ class TestExecutionBatchListSerializer(serializers.ModelSerializer):
             'error_cases', 'status', 'started_at', 'finished_at', 'duration_ms',
             'celery_task_id', 'success_rate'
         ]
+
+
+# ---------------------------------------------------------------------------
+# 项目管理模块
+# ---------------------------------------------------------------------------
+
+class UserSimpleSerializer(serializers.ModelSerializer):
+    """轻量用户序列化器（用于成员选择器）"""
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
+
+
+class ProjectMemberSerializer(serializers.ModelSerializer):
+    """项目成员序列化器"""
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = ProjectMember
+        fields = ['id', 'user_id', 'username', 'email', 'role', 'role_display', 'joined_at']
+        read_only_fields = ['joined_at']
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    """项目序列化器（基于根级 Directory）"""
+    member_count = serializers.SerializerMethodField()
+    created_by_name = serializers.CharField(source='created_by.username', read_only=True, default=None)
+
+    class Meta:
+        model = Directory
+        fields = [
+            'id', 'name', 'description', 'order',
+            'created_by', 'created_by_name', 'created_at',
+            'member_count',
+        ]
+        read_only_fields = ['created_by', 'created_at']
+
+    def get_member_count(self, obj) -> int:
+        return obj.members.count()

@@ -4,7 +4,8 @@ from .views import (DirectoryViewSet, InterfaceViewSet, TestCaseViewSet, TestCas
                    ExportTestCasesView, ObtainTokenView, CurrentUserView, TaskStatusView,
                    EnvironmentViewSet, TestExecutionBatchViewSet, TestExecutionViewSet,
                    YamlExportView, YamlImportView,
-                   ImportOpenAPIView, ImportOpenAPIPreviewView)
+                   ImportOpenAPIView, ImportOpenAPIPreviewView,
+                   ProjectViewSet, UserListView)
 from .metrics import PrometheusMetricsView
 from .testing_views import (
     ExecutorMachineViewSet, BuildPlanViewSet, BuildExecutionViewSet,
@@ -25,6 +26,8 @@ router.register(r'executor-machines', ExecutorMachineViewSet)
 router.register(r'build-plans', BuildPlanViewSet)
 router.register(r'build-executions', BuildExecutionViewSet)
 router.register(r'email-templates', EmailTemplateViewSet)
+# Project management
+router.register(r'projects', ProjectViewSet, basename='project')
 
 urlpatterns = [
     path('export/', ExportTestCasesView.as_view(), name='export_testcases'),
@@ -33,6 +36,7 @@ urlpatterns = [
     path('import-openapi/', ImportOpenAPIView.as_view(), name='import_openapi'),
     path('import-openapi/preview/', ImportOpenAPIPreviewView.as_view(), name='import_openapi_preview'),
     path('token/', ObtainTokenView.as_view(), name='token'),
+    path('users/', UserListView.as_view(), name='user_list'),
     path('users/me', CurrentUserView.as_view(), name='current_user'),
     path('tasks/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
     path('metrics/', PrometheusMetricsView.as_view(), name='prometheus_metrics'),
