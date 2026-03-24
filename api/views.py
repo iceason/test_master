@@ -13,8 +13,8 @@ from .test_case_generator import TestCaseGenerator
 from .exporters import TestCasesExporter
 from asgiref.sync import async_to_sync
 from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
-from rest_framework.authentication import TokenAuthentication
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
@@ -254,7 +254,7 @@ class YamlImportView(APIView):
 
 class ImportOpenAPIView(APIView):
     """导入 OpenAPI/Swagger 文档"""
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -362,7 +362,7 @@ class ImportOpenAPIView(APIView):
 
 class ImportOpenAPIPreviewView(APIView):
     """预览 OpenAPI 文档信息（不实际导入）"""
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -416,11 +416,28 @@ class ObtainTokenView(APIView):
         user = authenticate(username=username, password=password)
         if not user:
             return Response({'code': 400, 'data': None, 'message': '用户名或密码错误'}, status=400)
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({'code': 0, 'data': {'access': token.key, 'refresh': token.key}, 'message': 'ok'})
+        refresh = RefreshToken.for_user(user)
+        return Response({'code': 0, 'data': {'access': str(refresh.access_token), 'refresh': str(refresh)}, 'message': 'ok'})
+
+
+class RefreshTokenView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        refresh_token = request.data.get('refresh')
+        if not refresh_token:
+            return Response({'code': 400, 'data': None, 'message': '缺少 refresh token'}, status=400)
+        try:
+            refresh = RefreshToken(refresh_token)
+            new_access = str(refresh.access_token)
+            new_refresh = str(refresh)
+            return Response({'code': 0, 'data': {'access': new_access, 'refresh': new_refresh}, 'message': 'ok'})
+        except Exception:
+            return Response({'code': 401, 'data': None, 'message': 'refresh token 已过期，请重新登录'}, status=401)
 
 class CurrentUserView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -437,7 +454,7 @@ class CurrentUserView(APIView):
 
 
 class TaskStatusView(APIView):
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, task_id: str):
@@ -730,7 +747,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     """项目管理（基于根级 Directory）"""
     queryset = Directory.objects.filter(parent__isnull=True).prefetch_related('members')
     serializer_class = ProjectSerializer
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     search_fields = ['name', 'description']
@@ -843,7 +860,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 class UserListView(APIView):
     """系统用户列表（用于成员选择器）"""
-    authentication_classes = [TokenAuthentication]
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

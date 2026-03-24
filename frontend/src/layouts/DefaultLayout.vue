@@ -207,7 +207,7 @@
               <img v-if="userAvatar" :src="userAvatar" :alt="userStore.username" @error="handleAvatarError" class="object-cover rounded-full">
               <span v-else class="text-caption font-weight-bold text-on-primary">{{ (userStore.username || 'A').charAt(0).toUpperCase() }}</span>
             </v-avatar>
-            <span class="text-subtitle-2 font-weight-medium mr-1">{{ userStore.username || 'Admin' }}</span>
+            <span class="text-subtitle-2 font-weight-medium mr-1">{{ userStore.username || 'admin' }}</span>
             <v-icon icon="mdi-chevron-down" size="small"></v-icon>
           </v-btn>
         </template>

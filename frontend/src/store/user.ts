@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getToken, setToken as _setToken, removeToken } from '@/utils/axios'
+import { getToken, setToken as _setToken, removeToken, setRefreshToken, removeRefreshToken } from '@/utils/axios'
 import { request } from '@/utils/axios'
 
 interface LoginPayload {
@@ -33,12 +33,14 @@ export const useUserStore = defineStore('user', () => {
 
   const login = async (loginData: LoginPayload) => {
     const data = await request<TokenResponse>({
-      url: 'token/', // 对应 /api/token/
+      url: 'token/',
       method: 'post',
       data: loginData
     })
-    // 后端返回 { access: "...", refresh: "..." }
     setToken(data.access)
+    if (data.refresh) {
+      setRefreshToken(data.refresh)
+    }
   }
 
   const getInfo = async () => {
@@ -52,6 +54,7 @@ export const useUserStore = defineStore('user', () => {
 
   const logout = () => {
     removeToken()
+    removeRefreshToken()
     token.value = ''
     roles.value = []
     window.location.reload()

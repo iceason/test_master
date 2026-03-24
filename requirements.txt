@@ -2,6 +2,7 @@ asgiref==3.11.0
 dj-database-url==3.0.1
 Django==4.2.27
 djangorestframework==3.16.1
+djangorestframework-simplejwt==5.4.0
 psycopg2-binary==2.9.11
 pytz==2025.2
 sqlparse==0.5.5
@@ -22,6 +23,7 @@ python-jenkins==1.8.2
 django-celery-beat==2.7.0
 junitparser==3.2.0
 requests==2.32.3
+urllib3<2
 pytest==8.3.4
 pytest-django==4.9.0
 ruff==0.8.6

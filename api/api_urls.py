@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (DirectoryViewSet, InterfaceViewSet, TestCaseViewSet, TestCaseCategoryViewSet, 
-                   ExportTestCasesView, ObtainTokenView, CurrentUserView, TaskStatusView,
+                   ExportTestCasesView, ObtainTokenView, RefreshTokenView, CurrentUserView, TaskStatusView,
                    EnvironmentViewSet, TestExecutionBatchViewSet, TestExecutionViewSet,
                    YamlExportView, YamlImportView,
                    ImportOpenAPIView, ImportOpenAPIPreviewView,
@@ -36,6 +36,7 @@ urlpatterns = [
     path('import-openapi/', ImportOpenAPIView.as_view(), name='import_openapi'),
     path('import-openapi/preview/', ImportOpenAPIPreviewView.as_view(), name='import_openapi_preview'),
     path('token/', ObtainTokenView.as_view(), name='token'),
+    path('token/refresh/', RefreshTokenView.as_view(), name='token_refresh'),
     path('users/', UserListView.as_view(), name='user_list'),
     path('users/me', CurrentUserView.as_view(), name='current_user'),
     path('tasks/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
