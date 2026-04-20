@@ -11,6 +11,12 @@ const routes = [
     meta: { title: 'Login' }
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/register/index.vue'),
+    meta: { title: 'Register' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     component: () => import('@/views/error/NotFound.vue'),
     meta: { title: '404' }

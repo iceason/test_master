@@ -2,19 +2,6 @@
   <v-container fluid>
     <!-- 页头 + 操作栏 -->
     <v-sheet class="pa-4 rounded-xl border-thin" elevation="0" color="surface">
-      <v-row dense align="center" class="mb-3">
-        <v-col>
-          <div class="d-flex align-center">
-            <v-avatar color="primary" variant="tonal" size="40" class="mr-3">
-              <v-icon icon="mdi-clipboard-check-outline" size="22"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h6 font-weight-bold">{{ $t('testcase.title') }}</div>
-              <div class="text-caption text-medium-emphasis">{{ $t('testcase.subtitle') }}</div>
-            </div>
-          </div>
-        </v-col>
-      </v-row>
       <v-row dense align="center">
         <v-col cols="12" md="3">
           <v-text-field

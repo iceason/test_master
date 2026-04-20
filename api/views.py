@@ -3,7 +3,17 @@ from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse
-from .models import Directory, Interface, TestCase, TestCaseCategory, Environment, TestExecutionBatch, TestExecution, ProjectMember
+from .models import (
+    Directory,
+    Interface,
+    TestCase,
+    TestCaseCategory,
+    Environment,
+    TestExecutionBatch,
+    TestExecution,
+    ProjectMember,
+    RegistrationInvite,
+)
 from .serializers import (DirectorySerializer, InterfaceSerializer, TestCaseSerializer, TestCaseCategorySerializer,
                           EnvironmentSerializer, TestExecutionBatchSerializer, TestExecutionBatchListSerializer,
                           TestExecutionSerializer,
@@ -20,7 +30,11 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.utils import timezone
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.db import transaction
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+import secrets
 import threading
 
 # Try to import Celery, fallback to threading if not available
@@ -449,6 +463,7 @@ class CurrentUserView(APIView):
             'email': getattr(user, 'email', '') or '',
             'username': user.username,
             'roles': roles,
+            'is_superuser': bool(user.is_superuser),
         }
         return Response({'code': 0, 'data': data, 'message': 'ok'})
 
@@ -856,6 +871,115 @@ class ProjectViewSet(viewsets.ModelViewSet):
         member.role = new_role
         member.save()
         return Response(ProjectMemberSerializer(member).data)
+
+
+class IsSuperuserOnly(BasePermission):
+    def has_permission(self, request, view):
+        u = request.user
+        if not (u and u.is_authenticated):
+            return False
+        # Keep superuser as the primary check, and allow the built-in admin
+        # account / staff users to generate registration invites as well.
+        return bool(u.is_superuser or getattr(u, 'is_staff', False) or (u.username or '').lower() == 'admin')
+
+
+class RegistrationInviteCreateView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated, IsSuperuserOnly]
+
+    def post(self, request):
+        token = secrets.token_urlsafe(48)[:64]
+        expires_at = timezone.now() + timedelta(days=1)
+        RegistrationInvite.objects.create(
+            token=token,
+            created_by=request.user,
+            expires_at=expires_at,
+        )
+        base = getattr(settings, 'FRONTEND_BASE_URL', 'http://127.0.0.1:3334').rstrip('/')
+        invite_url = f'{base}/#/register?token={token}'
+        return Response({
+            'code': 0,
+            'data': {
+                'invite_url': invite_url,
+                'expires_at': expires_at.isoformat(),
+            },
+            'message': 'ok',
+        })
+
+
+class RegisterInviteValidateView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        token = (request.query_params.get('token') or '').strip()
+        if not token:
+            return Response({'code': 0, 'data': {'valid': False, 'reason': 'missing_token'}, 'message': 'ok'})
+        try:
+            invite = RegistrationInvite.objects.get(token=token)
+        except RegistrationInvite.DoesNotExist:
+            return Response({'code': 0, 'data': {'valid': False, 'reason': 'not_found'}, 'message': 'ok'})
+        if invite.used_at is not None:
+            return Response({'code': 0, 'data': {'valid': False, 'reason': 'used'}, 'message': 'ok'})
+        if timezone.now() > invite.expires_at:
+            return Response({'code': 0, 'data': {'valid': False, 'reason': 'expired'}, 'message': 'ok'})
+        return Response({
+            'code': 0,
+            'data': {'valid': True, 'expires_at': invite.expires_at.isoformat()},
+            'message': 'ok',
+        })
+
+
+class RegisterWithInviteView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        token = (request.data.get('token') or '').strip()
+        username = (request.data.get('username') or '').strip()
+        password = request.data.get('password') or ''
+        confirm = request.data.get('confirm_password') or ''
+
+        if not token:
+            return Response({'code': 400, 'data': None, 'message': '缺少邀请令牌'}, status=400)
+        if not username:
+            return Response({'code': 400, 'data': None, 'message': '请输入用户名'}, status=400)
+        if not password:
+            return Response({'code': 400, 'data': None, 'message': '请输入密码'}, status=400)
+        if password != confirm:
+            return Response({'code': 400, 'data': None, 'message': '两次输入的密码不一致'}, status=400)
+
+        User = get_user_model()
+        if User.objects.filter(username=username).exists():
+            return Response({'code': 400, 'data': None, 'message': '用户名已被占用'}, status=400)
+
+        try:
+            with transaction.atomic():
+                invite = RegistrationInvite.objects.select_for_update().get(token=token)
+                if invite.used_at is not None:
+                    return Response({'code': 400, 'data': None, 'message': '邀请链接已使用'}, status=400)
+                if timezone.now() > invite.expires_at:
+                    return Response({'code': 400, 'data': None, 'message': '邀请链接已过期'}, status=400)
+
+                user = User(username=username)
+                try:
+                    validate_password(password, user)
+                except ValidationError as e:
+                    return Response({'code': 400, 'data': None, 'message': '; '.join(e.messages)}, status=400)
+
+                user = User.objects.create_user(username=username, password=password)
+                invite.used_at = timezone.now()
+                invite.registered_user = user
+                invite.save(update_fields=['used_at', 'registered_user'])
+
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'code': 0,
+                'data': {'access': str(refresh.access_token), 'refresh': str(refresh)},
+                'message': 'ok',
+            })
+        except RegistrationInvite.DoesNotExist:
+            return Response({'code': 400, 'data': None, 'message': '邀请链接无效'}, status=400)
 
 
 class UserListView(APIView):

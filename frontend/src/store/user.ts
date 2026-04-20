@@ -19,12 +19,14 @@ interface CurrentUserResponse {
   id?: number
   name?: string
   email?: string
+  is_superuser?: boolean
 }
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
   const username = ref<string>('')
   const roles = ref<string[]>([])
+  const isSuperuser = ref(false)
 
   const setToken = (value: string) => {
     _setToken(value)
@@ -50,6 +52,7 @@ export const useUserStore = defineStore('user', () => {
     })
     username.value = data.username
     roles.value = data.roles || []
+    isSuperuser.value = Boolean(data.is_superuser)
   }
 
   const logout = () => {
@@ -57,8 +60,9 @@ export const useUserStore = defineStore('user', () => {
     removeRefreshToken()
     token.value = ''
     roles.value = []
+    isSuperuser.value = false
     window.location.reload()
   }
 
-  return { token, username, roles, setToken, login, getInfo, logout }
+  return { token, username, roles, isSuperuser, setToken, login, getInfo, logout }
 })

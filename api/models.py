@@ -620,3 +620,33 @@ class EmailTemplate(models.Model):
             subject = subject.replace(placeholder, str(value))
             body = body.replace(placeholder, str(value))
         return subject, body
+
+
+class RegistrationInvite(models.Model):
+    """一次性注册邀请链接（有有效期，使用后失效）"""
+    token = models.CharField(max_length=64, unique=True, db_index=True, verbose_name='邀请令牌')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_registration_invites',
+        verbose_name='创建人',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    expires_at = models.DateTimeField(verbose_name='过期时间')
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name='使用时间')
+    registered_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='registration_via_invite',
+        verbose_name='注册用户',
+    )
+
+    class Meta:
+        verbose_name = '注册邀请'
+        verbose_name_plural = '注册邀请'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Invite {self.token[:8]}…'

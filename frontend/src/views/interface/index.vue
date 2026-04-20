@@ -1,170 +1,142 @@
 <template>
-  <v-container fluid>
-    <!-- 页头 + 操作栏 -->
-    <v-sheet class="pa-4 rounded-xl border-thin" elevation="0" color="surface">
-      <v-row dense align="center" class="mb-3">
-        <v-col>
-          <div class="d-flex align-center">
-            <v-avatar color="primary" variant="tonal" size="40" class="mr-3">
-              <v-icon icon="mdi-api" size="22"></v-icon>
-            </v-avatar>
-            <div>
-              <div class="text-h6 font-weight-bold">{{ $t('interface.title') }}</div>
-              <div class="text-caption text-medium-emphasis">{{ $t('interface.subtitle') }}</div>
-            </div>
+  <v-container fluid class="fill-height pa-4">
+    <v-row no-gutters class="fill-height">
+      <!-- 左侧目录树 -->
+      <v-col cols="12" md="3" class="d-flex flex-column fill-height">
+        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="1" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+          <DirectoryTree ref="dirTreeRef" @select="handleDirSelect" />
+        </v-card>
+      </v-col>
+
+      <!-- 右侧接口列表 -->
+      <v-col cols="12" md="9" class="d-flex flex-column fill-height">
+        <v-card class="flex-grow-1 d-flex flex-column overflow-hidden" elevation="1" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+          <!-- 操作栏 -->
+          <div class="pa-4 border-b" style="flex-shrink: 0;">
+            <v-row dense align="center">
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="search"
+                  :label="$t('common.search')"
+                  prepend-inner-icon="mdi-magnify"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  clearable
+                  class="rounded-lg"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="filters.method"
+                  :items="['GET', 'POST', 'PUT', 'DELETE', 'PATCH']"
+                  :label="$t('interface.fields.method')"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  clearable
+                  class="rounded-lg"
+                ></v-select>
+              </v-col>
+              <v-spacer></v-spacer>
+              <v-col cols="12" md="auto" class="d-flex justify-end">
+                <v-btn
+                  color="secondary"
+                  variant="tonal"
+                  prepend-icon="mdi-file-import"
+                  @click="importDialog = true"
+                  class="text-none"
+                  size="small"
+                >
+                  {{ $t('interface.importOpenAPI') }}
+                </v-btn>
+                <v-btn
+                  color="error"
+                  variant="tonal"
+                  prepend-icon="mdi-delete-outline"
+                  @click="handleBatchDelete()"
+                  class="text-none ml-2"
+                  size="small"
+                >
+                  {{ $t('common.batchDelete') }}
+                </v-btn>
+                <v-btn color="primary" prepend-icon="mdi-plus" @click="openDialog()" class="text-none ml-2" size="small">
+                  {{ $t('interface.new') }}
+                </v-btn>
+              </v-col>
+            </v-row>
           </div>
-        </v-col>
-      </v-row>
-      <v-row dense align="center">
-        <v-col cols="12" md="4">
-          <v-text-field
-            v-model="search"
-            :label="$t('common.search')"
-            prepend-inner-icon="mdi-magnify"
-            density="compact"
-            variant="outlined"
-            hide-details
-            clearable
-            bg-color="background"
-            class="rounded-lg"
-          ></v-text-field>
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-select
-            v-model="filters.method"
-            :items="['GET', 'POST', 'PUT', 'DELETE', 'PATCH']"
-            :label="$t('interface.fields.method')"
-            density="compact"
-            variant="outlined"
-            hide-details
-            clearable
-            bg-color="background"
-            class="rounded-lg"
-          ></v-select>
-        </v-col>
-        <v-spacer></v-spacer>
-        <v-col cols="12" md="auto" class="d-flex justify-end">
-          <v-btn
-            color="secondary"
-            variant="tonal"
-            prepend-icon="mdi-file-import"
-            @click="importDialog = true"
-            class="text-none"
-          >
-            {{ $t('interface.importOpenAPI') }}
-          </v-btn>
-          <v-btn
-            color="error"
-            variant="tonal"
-            prepend-icon="mdi-delete-outline"
-            @click="handleBatchDelete()"
-            class="text-none ml-2"
-          >
-            {{ $t('common.batchDelete') }}
-          </v-btn>
-          <v-btn color="primary" prepend-icon="mdi-plus" @click="openDialog()" class="text-none ml-2">
-            {{ $t('interface.new') }}
-          </v-btn>
-        </v-col>
-      </v-row>
-    </v-sheet>
 
-    <!-- 数据列表 -->
-    <v-card class="mt-4" elevation="1">
-      <v-data-table-virtual
-        :headers="customHeaders"
-        :items="filteredItems"
-        :loading="loading"
-        :search="search"
-        fixed-header
-        height="600"
-        hover
-        item-key="id"
-        item-height="48"
-      >
-        <!-- 自定义选择列 - 表头全选 -->
-        <template v-slot:header.select>
-          <v-checkbox
-            v-model="isAllSelected"
-            :indeterminate="selectedIds.length > 0 && selectedIds.length < filteredItems.length"
-            @change="toggleSelectAll"
-            hide-details
-          ></v-checkbox>
-        </template>
-        
-        <!-- 自定义选择列 - 行选择 -->
-        <template v-slot:item.select="{ item }">
-          <v-checkbox
-            :model-value="selectedIdsSet.has(item.id)"
-            @update:model-value="toggleItemSelection(item.id)"
-            hide-details
-          ></v-checkbox>
-        </template>
-        
-        <template v-slot:item.method="{ item }">
-          <v-chip :color="getMethodColor(item.method)" size="small" label class="font-weight-bold">
-            {{ item.method.toUpperCase() }}
-          </v-chip>
-        </template>
-        
-        <template v-slot:item.path="{ item }">
-          <code class="text-grey-darken-3 bg-grey-lighten-4 px-1 rounded">{{ item.path }}</code>
-        </template>
+          <!-- 数据表格 -->
+          <div class="flex-grow-1 overflow-hidden">
+            <v-data-table-virtual
+              :headers="customHeaders"
+              :items="filteredItems"
+              :loading="loading"
+              :search="search"
+              fixed-header
+              height="100%"
+              hover
+              item-key="id"
+              item-height="48"
+            >
+              <template v-slot:header.select>
+                <v-checkbox
+                  v-model="isAllSelected"
+                  :indeterminate="selectedIds.length > 0 && selectedIds.length < filteredItems.length"
+                  @change="toggleSelectAll"
+                  hide-details
+                ></v-checkbox>
+              </template>
 
-        <template v-slot:item.directory="{ item }">
-          {{ getDirectoryName(item.directory) }}
-        </template>
+              <template v-slot:item.select="{ item }">
+                <v-checkbox
+                  :model-value="selectedIdsSet.has(item.id)"
+                  @update:model-value="toggleItemSelection(item.id)"
+                  hide-details
+                ></v-checkbox>
+              </template>
 
-        <template v-slot:item.actions="{ item }">
-          <v-tooltip location="top" :text="$t('interface.generateTestCases')">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                v-bind="props"
-                icon="mdi-test-tube"
-                variant="text"
-                size="small"
-                color="success"
-                @click="handleGenerate(item)"
-              ></v-btn>
-            </template>
-          </v-tooltip>
-          
-          <v-tooltip location="top" :text="$t('common.edit')">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                v-bind="props"
-                icon="mdi-pencil"
-                variant="text"
-                size="small"
-                color="primary"
-                @click="openDialog(item)"
-              ></v-btn>
-            </template>
-          </v-tooltip>
+              <template v-slot:item.method="{ item }">
+                <v-chip :color="getMethodColor(item.method)" size="small" label class="font-weight-bold">
+                  {{ item.method.toUpperCase() }}
+                </v-chip>
+              </template>
 
-          <v-tooltip location="top" :text="$t('common.delete')">
-            <template v-slot:activator="{ props }">
-              <v-btn
-                v-bind="props"
-                icon="mdi-delete"
-                variant="text"
-                size="small"
-                color="error"
-                @click="handleDelete(item)"
-              ></v-btn>
-            </template>
-          </v-tooltip>
-        </template>
-        
-        <template v-slot:no-data>
-          <v-empty-state
-            icon="mdi-database-off"
-            :title="$t('common.noData')"
-            class="py-10"
-          ></v-empty-state>
-        </template>
-      </v-data-table-virtual>
-    </v-card>
+              <template v-slot:item.path="{ item }">
+                <code class="text-grey-darken-3 bg-grey-lighten-4 px-1 rounded">{{ item.path }}</code>
+              </template>
+
+              <template v-slot:item.directory="{ item }">
+                {{ getDirectoryName(item.directory) }}
+              </template>
+
+              <template v-slot:item.actions="{ item }">
+                <v-tooltip location="top" :text="$t('interface.generateTestCases')">
+                  <template v-slot:activator="{ props }">
+                    <v-btn v-bind="props" icon="mdi-test-tube" variant="text" size="small" color="success" @click="handleGenerate(item)"></v-btn>
+                  </template>
+                </v-tooltip>
+                <v-tooltip location="top" :text="$t('common.edit')">
+                  <template v-slot:activator="{ props }">
+                    <v-btn v-bind="props" icon="mdi-pencil" variant="text" size="small" color="primary" @click="openDialog(item)"></v-btn>
+                  </template>
+                </v-tooltip>
+                <v-tooltip location="top" :text="$t('common.delete')">
+                  <template v-slot:activator="{ props }">
+                    <v-btn v-bind="props" icon="mdi-delete" variant="text" size="small" color="error" @click="handleDelete(item)"></v-btn>
+                  </template>
+                </v-tooltip>
+              </template>
+
+              <template v-slot:no-data>
+                <v-empty-state icon="mdi-database-off" :title="$t('common.noData')" class="py-10"></v-empty-state>
+              </template>
+            </v-data-table-virtual>
+          </div>
+        </v-card>
+      </v-col>
+    </v-row>
 
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="dialog" max-width="800px" persistent>
@@ -209,7 +181,7 @@
               <v-col cols="12" md="4">
                 <v-select
                   v-model="editedItem.directory"
-                  :items="directories"
+                  :items="flatDirs"
                   item-title="name"
                   item-value="id"
                   :label="$t('interface.fields.directory')"
@@ -219,7 +191,6 @@
                   required
                 ></v-select>
               </v-col>
-              
               <v-col cols="12">
                 <v-textarea
                   v-model="editedItem.schema_yaml"
@@ -237,12 +208,8 @@
         <v-divider></v-divider>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="dialog = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn color="primary" variant="flat" class="text-none ml-3" @click="save" :disabled="!valid">
-            {{ $t('common.save') }}
-          </v-btn>
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="dialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" variant="flat" class="text-none ml-3" @click="save" :disabled="!valid">{{ $t('common.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -258,12 +225,8 @@
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="deleteDialog = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmDelete">
-            {{ $t('common.delete') }}
-          </v-btn>
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="deleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmDelete">{{ $t('common.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -279,12 +242,8 @@
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer></v-spacer>
-          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="batchDeleteDialog = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmBatchDelete">
-            {{ $t('common.delete') }}
-          </v-btn>
+          <v-btn variant="text" color="grey-darken-1" class="text-none" @click="batchDeleteDialog = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="error" variant="flat" class="text-none ml-3" @click="confirmBatchDelete">{{ $t('common.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -294,15 +253,11 @@
       <v-card color="primary" dark class="pa-4 text-center rounded-xl">
         <v-card-text class="text-white">
           {{ $t('interface.generating') }}
-          <v-progress-linear
-            indeterminate
-            color="white"
-            class="mb-0 mt-4"
-          ></v-progress-linear>
+          <v-progress-linear indeterminate color="white" class="mb-0 mt-4"></v-progress-linear>
         </v-card-text>
       </v-card>
     </v-dialog>
-    
+
     <!-- Import OpenAPI Dialog -->
     <ImportDialog v-model="importDialog" @imported="onImported" />
 
@@ -316,13 +271,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getInterfaces, createInterface, updateInterface, deleteInterface, generateTestCases, batchDeleteInterfaces } from '@/api/interface'
 import { getDirectories } from '@/api/directory'
 import type { Interface } from '@/api/interface'
 import type { Directory } from '@/api/directory'
 import ImportDialog from './components/ImportDialog.vue'
+import DirectoryTree from './components/DirectoryTree.vue'
 
 const { t } = useI18n()
 
@@ -332,6 +288,7 @@ const dialog = ref(false)
 const valid = ref(false)
 const items = ref<Interface[]>([])
 const directories = ref<Directory[]>([])
+const flatDirs = ref<{ id: number; name: string }[]>([])
 const editedId = ref<number | null>(null)
 const deleteDialog = ref(false)
 const batchDeleteDialog = ref(false)
@@ -342,9 +299,9 @@ const snackbarText = ref('')
 const snackbarColor = ref('success')
 const search = ref('')
 const importDialog = ref(false)
-const filters = ref({
-  method: null as string | null
-})
+const selectedDirId = ref<number | null>(null)
+const dirTreeRef = ref<any>(null)
+const filters = ref({ method: null as string | null })
 
 const defaultItem: Partial<Interface> = {
   name: '',
@@ -356,7 +313,6 @@ const defaultItem: Partial<Interface> = {
 
 const editedItem = ref<Partial<Interface>>({ ...defaultItem })
 
-// 创建自定义表头，添加选择列
 const customHeaders = computed(() => [
   { title: '', key: 'select', sortable: false, width: '50px', align: 'center' as const },
   { title: t('interface.fields.id'), key: 'id', align: 'start' as const },
@@ -367,42 +323,29 @@ const customHeaders = computed(() => [
   { title: t('common.actions'), key: 'actions', sortable: false, align: 'end' as const },
 ])
 
-// 使用Set存储选中的ID，避免重复
 const selectedIdsSet = ref(new Set<number>())
-
-// 计算属性：获取选中的ID数组
 const selectedIds = computed(() => Array.from(selectedIdsSet.value))
 
-// 计算属性：获取选中的项目数组
 const selectedItems = computed(() => {
   return filteredItems.value.filter(item => selectedIdsSet.value.has(item.id))
 })
 
-// 切换单个项目的选择状态
 const toggleItemSelection = (id: number) => {
   if (selectedIdsSet.value.has(id)) {
     selectedIdsSet.value.delete(id)
   } else {
     selectedIdsSet.value.add(id)
   }
-  console.log('[DEBUG] Toggle selection, selectedIds:', selectedIds.value)
-  console.log('[DEBUG] Toggle selection, selectedIds length:', selectedIds.value.length)
 }
 
-// 切换全选状态
 const toggleSelectAll = () => {
   if (selectedIds.value.length === filteredItems.value.length) {
-    // 如果已经全选，则取消全选
     selectedIdsSet.value.clear()
   } else {
-    // 否则全选
     selectedIdsSet.value = new Set(filteredItems.value.map(item => item.id))
   }
-  console.log('[DEBUG] Toggle select all, selectedIds:', selectedIds.value)
-  console.log('[DEBUG] Toggle select all, selectedIds length:', selectedIds.value.length)
 }
 
-// 检查是否全选
 const isAllSelected = computed(() => {
   return filteredItems.value.length > 0 && selectedIds.value.length === filteredItems.value.length
 })
@@ -414,15 +357,25 @@ const filteredItems = computed(() => {
   })
 })
 
-const loadData = async () => {
+const flattenDirs = (dirs: Directory[]): { id: number; name: string }[] => {
+  let result: { id: number; name: string }[] = []
+  for (const dir of dirs) {
+    result.push({ id: dir.id, name: dir.name })
+    if (dir.sub_directories) {
+      result = result.concat(flattenDirs(dir.sub_directories))
+    }
+  }
+  return result
+}
+
+const loadInterfaces = async () => {
   loading.value = true
   try {
-    const [interfacesData, dirsData] = await Promise.all([
-      getInterfaces({ no_page: true }),
-      getDirectories()
-    ])
-    items.value = interfacesData
-    directories.value = dirsData
+    const params: any = { no_page: true }
+    if (selectedDirId.value) {
+      params.directory = selectedDirId.value
+    }
+    items.value = await getInterfaces(params)
   } catch (error) {
     showMsg(t('common.error'), 'error')
   } finally {
@@ -430,26 +383,39 @@ const loadData = async () => {
   }
 }
 
-const getMethodColor = (method: string) => {
-  const colors: Record<string, string> = {
-    GET: 'blue',
-    POST: 'green',
-    PUT: 'orange',
-    DELETE: 'red',
-    PATCH: 'purple'
+const loadDirectories = async () => {
+  try {
+    const dirsData = await getDirectories()
+    directories.value = dirsData
+    flatDirs.value = flattenDirs(dirsData)
+  } catch (error) {
+    console.error(error)
   }
+}
+
+const loadData = async () => {
+  await Promise.all([loadInterfaces(), loadDirectories()])
+}
+
+const handleDirSelect = (dirId: number | null) => {
+  selectedDirId.value = dirId
+  selectedIdsSet.value.clear()
+  loadInterfaces()
+}
+
+const getMethodColor = (method: string) => {
+  const colors: Record<string, string> = { GET: 'blue', POST: 'green', PUT: 'orange', DELETE: 'red', PATCH: 'purple' }
   return colors[method.toUpperCase()] || 'grey'
 }
 
 const getDirectoryName = (id: number) => {
-  const dir = directories.value.find(d => d.id === id)
+  const dir = flatDirs.value.find(d => d.id === id)
   return dir ? dir.name : id
 }
 
 const openDialog = (item?: Interface) => {
   if (item) {
     editedId.value = item.id
-    // 如果后端返回 schema，尝试转换为字符串显示
     let schemaStr = ''
     if (item.schema) {
       schemaStr = JSON.stringify(item.schema, null, 2)
@@ -458,8 +424,10 @@ const openDialog = (item?: Interface) => {
   } else {
     editedId.value = null
     editedItem.value = { ...defaultItem }
-    if (directories.value.length > 0 && directories.value[0]) {
-      editedItem.value.directory = directories.value[0].id
+    if (selectedDirId.value) {
+      editedItem.value.directory = selectedDirId.value
+    } else if (flatDirs.value.length > 0) {
+      editedItem.value.directory = flatDirs.value[0].id
     }
   }
   dialog.value = true
@@ -467,25 +435,18 @@ const openDialog = (item?: Interface) => {
 
 const save = async () => {
   try {
-    // 简单的 JSON 校验
     if (editedItem.value.schema_yaml) {
-        try {
-            JSON.parse(editedItem.value.schema_yaml)
-        } catch (e) {
-            // 如果不是 JSON，假设是 YAML，后端会处理
-            // 但为了前端体验，这里简单提示一下
-        }
+      try { JSON.parse(editedItem.value.schema_yaml) } catch (e) { /* YAML handled by backend */ }
     }
-
     if (editedId.value) {
       await updateInterface(editedId.value, editedItem.value)
-      showMsg(t('common.success'))
     } else {
       await createInterface(editedItem.value)
-      showMsg(t('common.success'))
     }
+    showMsg(t('common.success'))
     dialog.value = false
-    loadData()
+    loadInterfaces()
+    dirTreeRef.value?.refresh()
   } catch (error) {
     showMsg(t('common.error'), 'error')
   }
@@ -502,7 +463,7 @@ const confirmDelete = async () => {
     try {
       await deleteInterface(deleteItemId.value)
       showMsg(t('common.success'))
-      loadData()
+      loadInterfaces()
     } catch (error) {
       showMsg(t('common.error'), 'error')
     } finally {
@@ -512,20 +473,9 @@ const confirmDelete = async () => {
 }
 
 const handleBatchDelete = () => {
-  console.log('[DEBUG] handleBatchDelete called')
-  console.log('[DEBUG] Current selectedIds:', selectedIds.value)
-  console.log('[DEBUG] Current selectedIds length:', selectedIds.value.length)
-  console.log('[DEBUG] Current selectedItems:', selectedItems.value)
-  console.log('[DEBUG] Current selectedItems length:', selectedItems.value.length)
-  
-  // 检查selectedIds是否为数组
-  console.log('[DEBUG] Is selectedIds an array?', Array.isArray(selectedIds.value))
-  
   if (selectedIds.value.length > 0) {
-    console.log('[DEBUG] Showing batch delete dialog')
     batchDeleteDialog.value = true
   } else {
-    console.log('[DEBUG] No items selected, showing warning')
     showMsg(t('common.noSelectedItems'), 'warning')
   }
 }
@@ -535,8 +485,7 @@ const confirmBatchDelete = async () => {
     try {
       await batchDeleteInterfaces(selectedIds.value)
       showMsg(t('common.success'))
-      loadData()
-      // 清空选中状态 - 直接清空Set
+      loadInterfaces()
       selectedIdsSet.value.clear()
     } catch (error) {
       showMsg(t('common.error'), 'error')
@@ -560,7 +509,8 @@ const handleGenerate = async (item: Interface) => {
 
 const onImported = () => {
   showMsg(t('interface.importSuccess'))
-  loadData()
+  loadInterfaces()
+  dirTreeRef.value?.refresh()
 }
 
 const showMsg = (text: string, color = 'success') => {

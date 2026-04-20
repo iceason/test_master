@@ -25,6 +25,9 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 
+# 注册邀请链接中的前端基址（hash 路由，末尾不要斜杠）
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://127.0.0.1:3334').rstrip('/')
+
 
 # Application definition
 

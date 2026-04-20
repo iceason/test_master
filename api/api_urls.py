@@ -1,11 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (DirectoryViewSet, InterfaceViewSet, TestCaseViewSet, TestCaseCategoryViewSet, 
+from .views import (DirectoryViewSet, InterfaceViewSet, TestCaseViewSet, TestCaseCategoryViewSet,
                    ExportTestCasesView, ObtainTokenView, RefreshTokenView, CurrentUserView, TaskStatusView,
                    EnvironmentViewSet, TestExecutionBatchViewSet, TestExecutionViewSet,
                    YamlExportView, YamlImportView,
                    ImportOpenAPIView, ImportOpenAPIPreviewView,
-                   ProjectViewSet, UserListView)
+                   ProjectViewSet, UserListView,
+                   RegistrationInviteCreateView, RegisterInviteValidateView, RegisterWithInviteView)
 from .metrics import PrometheusMetricsView
 from .testing_views import (
     ExecutorMachineViewSet, BuildPlanViewSet, BuildExecutionViewSet,
@@ -37,6 +38,9 @@ urlpatterns = [
     path('import-openapi/preview/', ImportOpenAPIPreviewView.as_view(), name='import_openapi_preview'),
     path('token/', ObtainTokenView.as_view(), name='token'),
     path('token/refresh/', RefreshTokenView.as_view(), name='token_refresh'),
+    path('registration-invites/', RegistrationInviteCreateView.as_view(), name='registration_invite_create'),
+    path('register/validate/', RegisterInviteValidateView.as_view(), name='register_invite_validate'),
+    path('register/', RegisterWithInviteView.as_view(), name='register_with_invite'),
     path('users/', UserListView.as_view(), name='user_list'),
     path('users/me', CurrentUserView.as_view(), name='current_user'),
     path('tasks/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
