@@ -136,3 +136,44 @@ export const previewEmailTemplate = (id: number) =>
 
 export const previewCustomEmailTemplate = (data: { subject: string; body: string }) =>
   request({ url: 'email-templates/preview_custom/', method: 'post', data })
+
+// -----------------------------------------------------------------------
+// DingTalk Groups
+// -----------------------------------------------------------------------
+
+export const getDingTalkGroups = (params?: any) =>
+  request({ url: 'dingtalk-groups/', method: 'get', params })
+
+export const createDingTalkGroup = (data: any) =>
+  request({ url: 'dingtalk-groups/', method: 'post', data })
+
+export const updateDingTalkGroup = (id: number, data: any) =>
+  request({ url: `dingtalk-groups/${id}/`, method: 'put', data })
+
+export const deleteDingTalkGroup = (id: number) =>
+  request({ url: `dingtalk-groups/${id}/`, method: 'delete' })
+
+export const testDingTalkGroupSend = (id: number, data?: any) =>
+  request({ url: `dingtalk-groups/${id}/test-send/`, method: 'post', data })
+
+// -----------------------------------------------------------------------
+// DingTalk Templates
+// -----------------------------------------------------------------------
+
+export const getDingTalkTemplates = (params?: any) =>
+  request({ url: 'dingtalk-templates/', method: 'get', params })
+
+export const createDingTalkTemplate = (data: any) =>
+  request({ url: 'dingtalk-templates/', method: 'post', data })
+
+export const updateDingTalkTemplate = (id: number, data: any) =>
+  request({ url: `dingtalk-templates/${id}/`, method: 'put', data })
+
+export const deleteDingTalkTemplate = (id: number) =>
+  request({ url: `dingtalk-templates/${id}/`, method: 'delete' })
+
+export const setDefaultDingTalkTemplate = (id: number) =>
+  request({ url: `dingtalk-templates/${id}/set_default/`, method: 'post' })
+
+export const previewDingTalkTemplate = (id: number) =>
+  request({ url: `dingtalk-templates/${id}/preview/`, method: 'post' })

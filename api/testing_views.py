@@ -20,12 +20,16 @@ from django.conf import settings
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 
-from .models import ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate
+from .models import (
+    ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate,
+    DingTalkGroup, DingTalkTemplate,
+)
 from .testing_serializers import (
     ExecutorMachineSerializer,
     BuildPlanSerializer, BuildPlanListSerializer,
     BuildExecutionSerializer, BuildExecutionListSerializer,
     EmailTemplateSerializer,
+    DingTalkGroupSerializer, DingTalkTemplateSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -239,20 +243,27 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
                 )
 
         triggered_by = request.user.username if request.user.is_authenticated else 'anonymous'
+        repeat_run_times = max(1, min(int(getattr(plan, 'repeat_run_times', 1) or 1), 20))
+        failure_policy = getattr(plan, 'repeat_failure_policy', 'continue_all') or 'continue_all'
 
-        execution = BuildExecution.objects.create(
-            build_plan=plan,
-            executor_machine=plan.executor_machine,
-            trigger_type='manual',
+        from .build_tasks import dispatch_repeated_builds
+        result = dispatch_repeated_builds(
+            plan=plan,
+            repeat_run_times=repeat_run_times,
+            failure_policy=failure_policy,
             triggered_by=triggered_by,
-            status='pending',
+            trigger_type='manual',
         )
 
-        from .build_tasks import _dispatch_build
-        _dispatch_build(execution)
-
         return Response({
-            'execution_id': execution.id,
+            'execution_id': result['execution_ids'][0] if result.get('execution_ids') else None,
+            'execution_ids': result.get('execution_ids', []),
+            'repeat_summary': {
+                'repeat_run_times': repeat_run_times,
+                'repeat_failure_policy': failure_policy,
+                'dispatch_mode': result.get('mode'),
+                'orchestrator_task_id': result.get('orchestrator_task_id', ''),
+            },
             'status': 'accepted',
         }, status=status.HTTP_202_ACCEPTED)
 
@@ -673,3 +684,62 @@ class EmailTemplateViewSet(viewsets.ModelViewSet):
             subject_tpl = subject_tpl.replace(placeholder, str(value))
             body_tpl = body_tpl.replace(placeholder, str(value))
         return Response({'subject': subject_tpl, 'body': body_tpl})
+
+
+class DingTalkGroupViewSet(viewsets.ModelViewSet):
+    queryset = DingTalkGroup.objects.all()
+    serializer_class = DingTalkGroupSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active']
+    search_fields = ['name', 'description', 'webhook_url']
+    ordering_fields = ['id', 'name', 'updated_at', 'created_at']
+    ordering = ['name']
+
+    @action(detail=True, methods=['post'], url_path='test-send')
+    def test_send(self, request, pk=None):
+        group = self.get_object()
+        try:
+            from .build_tasks import send_dingtalk_markdown
+            title = request.data.get('title', 'Test Master 钉钉通知测试')
+            text = request.data.get(
+                'text',
+                '### Test Master 通知测试\n\n- 状态：连通性测试\n- 结果：通过\n'
+            )
+            send_dingtalk_markdown(group.webhook_url, group.secret, title, text)
+            return Response({'status': 'ok'})
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DingTalkTemplateViewSet(viewsets.ModelViewSet):
+    queryset = DingTalkTemplate.objects.all()
+    serializer_class = DingTalkTemplateSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ['is_active', 'is_default']
+    search_fields = ['name', 'description']
+    ordering_fields = ['id', 'name', 'updated_at', 'created_at']
+    ordering = ['-is_default', '-updated_at']
+
+    @action(detail=True, methods=['post'], url_path='set_default')
+    def set_default(self, request, pk=None):
+        tpl = self.get_object()
+        tpl.is_default = True
+        tpl.save()
+        return Response({'status': 'ok'})
+
+    @action(detail=True, methods=['post'], url_path='preview')
+    def preview(self, request, pk=None):
+        tpl = self.get_object()
+        sample = {
+            'plan_name': '示例构建计划',
+            'status': 'success',
+            'status_upper': 'SUCCESS',
+            'status_emoji': '✅',
+            'trigger_type': '手动',
+            'triggered_by': 'admin',
+            'duration': '1m 23s',
+            'jenkins_url': 'http://127.0.0.1:8080/job/demo/1/',
+            'timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+        title, body = tpl.render(sample)
+        return Response({'title': title, 'body': body})

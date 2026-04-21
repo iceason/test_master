@@ -104,6 +104,18 @@ const routes = [
         name: 'Environments',
         component: () => import('@/views/settings/Environments.vue'),
         meta: { title: 'Environments' }
+      },
+      {
+        path: 'settings/dingtalk-groups',
+        name: 'DingTalkGroups',
+        component: () => import('@/views/settings/DingTalkGroups.vue'),
+        meta: { title: 'DingTalk Groups' }
+      },
+      {
+        path: 'settings/dingtalk-templates',
+        name: 'DingTalkTemplates',
+        component: () => import('@/views/settings/DingTalkTemplates.vue'),
+        meta: { title: 'DingTalk Templates' }
       }
     ]
   }

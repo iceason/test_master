@@ -127,6 +127,26 @@
                     <v-textarea v-model="form.description" :label="$t('testing.plans.fields.description')" variant="outlined" density="compact" rows="2" class="mb-3" />
                     <v-select v-model="form.executor_machine" :items="machines" item-title="name" item-value="id" :label="$t('testing.plans.fields.executorMachine')" variant="outlined" density="compact" clearable class="mb-3" />
                     <v-select v-if="form.id" v-model="form.status" :items="planStatusOptions" :label="$t('testing.plans.fields.status')" variant="outlined" density="compact" class="mt-3" />
+                    <v-text-field
+                      v-model.number="form.repeat_run_times"
+                      :label="$t('testing.plans.fields.repeatRunTimes')"
+                      type="number"
+                      min="1"
+                      max="20"
+                      variant="outlined"
+                      density="compact"
+                      class="mt-3"
+                      :hint="$t('testing.plans.fields.repeatRunTimesHint')"
+                      persistent-hint
+                    />
+                    <v-select
+                      v-model="form.repeat_failure_policy"
+                      :items="repeatFailurePolicyOptions"
+                      :label="$t('testing.plans.fields.repeatFailurePolicy')"
+                      variant="outlined"
+                      density="compact"
+                      class="mt-3"
+                    />
                   </v-expansion-panel-text>
                 </v-expansion-panel>
 
@@ -187,8 +207,35 @@
                     <v-combobox v-if="notifyEmail" v-model="emailRecipientsList" :label="$t('testing.notification.emailRecipients')" variant="outlined" density="compact" multiple chips closable-chips :hint="$t('testing.plans.notification.emailHint')" persistent-hint class="mb-3" />
                     <v-switch v-model="notifyWebhook" :label="$t('testing.notification.webhook')" color="primary" density="compact" hide-details class="mb-3" />
                     <template v-if="notifyWebhook">
+                      <div class="text-caption text-medium-emphasis mb-2">{{ $t('testing.notification.webhookLegacyHint') }}</div>
                       <v-text-field v-model="webhookUrl" :label="$t('testing.notification.webhookUrl')" variant="outlined" density="compact" class="mb-2" />
                       <v-select v-model="webhookType" :items="webhookTypes" :label="$t('testing.notification.webhookType')" variant="outlined" density="compact" />
+                    </template>
+                    <v-divider class="my-3" />
+                    <v-switch v-model="notifyDingTalk" :label="$t('testing.notification.dingtalk')" color="primary" density="compact" hide-details class="mb-3" />
+                    <template v-if="notifyDingTalk">
+                      <v-select
+                        v-model="selectedDingTalkGroupIds"
+                        :items="dingTalkGroups"
+                        item-title="name"
+                        item-value="id"
+                        :label="$t('testing.notification.dingtalkGroups')"
+                        variant="outlined"
+                        density="compact"
+                        multiple
+                        chips
+                        class="mb-2"
+                      />
+                      <v-select
+                        v-model="selectedDingTalkTemplateId"
+                        :items="dingTalkTemplates"
+                        item-title="name"
+                        item-value="id"
+                        :label="$t('testing.notification.dingtalkTemplate')"
+                        variant="outlined"
+                        density="compact"
+                        clearable
+                      />
                     </template>
                   </v-expansion-panel-text>
                 </v-expansion-panel>
@@ -267,7 +314,7 @@ import { useRouter } from 'vue-router'
 import { useSnackbarStore } from '@/store/snackbar'
 import {
   getBuildPlans, getBuildPlan, createBuildPlan, updateBuildPlan, deleteBuildPlan,
-  triggerBuildPlan, stopBuildPlan, getExecutorMachines,
+  triggerBuildPlan, stopBuildPlan, getExecutorMachines, getDingTalkGroups, getDingTalkTemplates,
 } from '@/api/testing'
 import { Codemirror } from 'vue-codemirror'
 import { StreamLanguage } from '@codemirror/language'
@@ -289,6 +336,8 @@ const dialog = ref(false)
 const formRef = ref<any>(null)
 const items = ref<any[]>([])
 const machines = ref<any[]>([])
+const dingTalkGroups = ref<any[]>([])
+const dingTalkTemplates = ref<any[]>([])
 const expandedPanels = ref(['basic'])
 const editorMode = ref('visual')
 const jenkinsfileText = ref('')
@@ -298,6 +347,9 @@ const emailRecipientsList = ref<string[]>([])
 const notifyWebhook = ref(false)
 const webhookUrl = ref('')
 const webhookType = ref('dingtalk')
+const notifyDingTalk = ref(false)
+const selectedDingTalkGroupIds = ref<number[]>([])
+const selectedDingTalkTemplateId = ref<number | null>(null)
 
 const confirmDialog = ref(false)
 const confirmTitle = ref('')
@@ -315,6 +367,8 @@ const form = ref<any>({
   workspace_cleanup: true,
   report_enabled: false,
   report_command: '',
+  repeat_run_times: 1,
+  repeat_failure_policy: 'continue_all',
   jenkinsfile_text: '',
 })
 
@@ -335,6 +389,10 @@ const statusOptions = computed(() => [
 const planStatusOptions = computed(() => [
   { title: t('testing.plans.status.active'), value: 'active' },
   { title: t('testing.plans.status.disabled'), value: 'disabled' },
+])
+const repeatFailurePolicyOptions = computed(() => [
+  { title: t('testing.plans.repeatFailurePolicy.continue_all'), value: 'continue_all' },
+  { title: t('testing.plans.repeatFailurePolicy.stop_on_first_fail'), value: 'stop_on_first_fail' },
 ])
 const webhookTypes = [
   { title: 'DingTalk', value: 'dingtalk' },
@@ -383,12 +441,16 @@ watch(confirmDialog, (v) => { if (!v && confirmResolve) { confirmResolve(false);
 const loadData = async () => {
   loading.value = true
   try {
-    const [plansRes, machinesRes] = await Promise.all([
+    const [plansRes, machinesRes, dingtalkGroupsRes, dingtalkTemplatesRes] = await Promise.all([
       getBuildPlans({ no_page: true }),
       getExecutorMachines({ no_page: true }),
+      getDingTalkGroups({ no_page: true, is_active: true }),
+      getDingTalkTemplates({ no_page: true, is_active: true }),
     ])
     items.value = (Array.isArray(plansRes) ? plansRes : []).map((i: any) => ({ ...i, _triggering: false, _stopping: false }))
     machines.value = Array.isArray(machinesRes) ? machinesRes : []
+    dingTalkGroups.value = Array.isArray(dingtalkGroupsRes) ? dingtalkGroupsRes : []
+    dingTalkTemplates.value = Array.isArray(dingtalkTemplatesRes) ? dingtalkTemplatesRes : []
   } catch (e) { console.error(e) }
   loading.value = false
 }
@@ -404,6 +466,8 @@ const populateForm = (data: any) => {
     workspace_cleanup: data.workspace_cleanup ?? true,
     report_enabled: data.report_enabled || false,
     report_command: data.report_command || '',
+    repeat_run_times: data.repeat_run_times || 1,
+    repeat_failure_policy: data.repeat_failure_policy || 'continue_all',
     jenkinsfile_text: data.jenkinsfile_text || '',
   }
   const nc = data.notification_config || {}
@@ -412,6 +476,9 @@ const populateForm = (data: any) => {
   notifyWebhook.value = nc.webhook?.enabled || false
   webhookUrl.value = nc.webhook?.url || ''
   webhookType.value = nc.webhook?.type || 'dingtalk'
+  notifyDingTalk.value = nc.dingtalk?.enabled || false
+  selectedDingTalkGroupIds.value = Array.isArray(nc.dingtalk?.group_ids) ? nc.dingtalk.group_ids : []
+  selectedDingTalkTemplateId.value = nc.dingtalk?.template_id ?? null
   jenkinsfileText.value = data.jenkinsfile_text || ''
   lastCleanText = jenkinsfileText.value
   textDirty.value = false
@@ -439,6 +506,7 @@ const openDialog = async (item?: any) => {
       steps: [], environment_variables: [],
       git_repo_url: '', git_branch: 'main', git_credential_id: '',
       workspace_cleanup: true, report_enabled: false, report_command: '',
+      repeat_run_times: 1, repeat_failure_policy: 'continue_all',
       jenkinsfile_text: '',
     }
     notifyEmail.value = false
@@ -446,6 +514,9 @@ const openDialog = async (item?: any) => {
     notifyWebhook.value = false
     webhookUrl.value = ''
     webhookType.value = 'dingtalk'
+    notifyDingTalk.value = false
+    selectedDingTalkGroupIds.value = []
+    selectedDingTalkTemplateId.value = null
     jenkinsfileText.value = ''
     lastCleanText = ''
     textDirty.value = false
@@ -540,6 +611,11 @@ const saveItem = async () => {
   saving.value = true
   try {
     let jfText = jenkinsfileText.value || ''
+    const repeatRunTimes = Number(form.value.repeat_run_times || 1)
+    const safeRepeatRunTimes = Math.min(20, Math.max(1, Number.isFinite(repeatRunTimes) ? repeatRunTimes : 1))
+    if (safeRepeatRunTimes !== repeatRunTimes) {
+      snackbar.notify(t('testing.plans.fields.repeatRunTimesRange'), 'warning')
+    }
 
     const steps = (form.value.steps || []).map((s: any, i: number) => {
       const { id: _id, ...rest } = s
@@ -557,6 +633,8 @@ const saveItem = async () => {
       workspace_cleanup: form.value.workspace_cleanup ?? true,
       report_enabled: form.value.report_enabled || false,
       report_command: form.value.report_command || '',
+      repeat_run_times: safeRepeatRunTimes,
+      repeat_failure_policy: form.value.repeat_failure_policy || 'continue_all',
       environment_variables: form.value.environment_variables || [],
       cron_expression: form.value.cron_expression || '',
       is_cron_enabled: form.value.is_cron_enabled || false,
@@ -565,6 +643,11 @@ const saveItem = async () => {
       notification_config: {
         email: { enabled: notifyEmail.value, recipients: emailRecipientsList.value },
         webhook: { enabled: notifyWebhook.value, url: webhookUrl.value, type: webhookType.value },
+        dingtalk: {
+          enabled: notifyDingTalk.value,
+          group_ids: selectedDingTalkGroupIds.value,
+          template_id: selectedDingTalkTemplateId.value,
+        },
       },
       steps,
     }

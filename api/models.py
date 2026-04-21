@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 
 class Directory(models.Model):
@@ -392,6 +393,22 @@ class BuildPlan(models.Model):
     # 定时执行
     cron_expression = models.CharField(max_length=100, blank=True, verbose_name="Cron 表达式")
     is_cron_enabled = models.BooleanField(default=False, verbose_name="启用定时执行")
+    repeat_run_times = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+        verbose_name="重复执行次数",
+        help_text="点击一次立即构建时，自动触发的轮次（1~20）",
+    )
+    REPEAT_FAILURE_POLICY_CHOICES = (
+        ('continue_all', '继续全部轮次'),
+        ('stop_on_first_fail', '首次失败即停止'),
+    )
+    repeat_failure_policy = models.CharField(
+        max_length=30,
+        choices=REPEAT_FAILURE_POLICY_CHOICES,
+        default='continue_all',
+        verbose_name="重复执行失败策略",
+    )
 
     # 环境变量
     environment_variables = models.JSONField(
@@ -407,7 +424,7 @@ class BuildPlan(models.Model):
     # 通知配置
     notification_config = models.JSONField(
         default=dict, blank=True, verbose_name="通知配置",
-        help_text='{"email": {"enabled": false, "recipients": []}, "webhook": {"enabled": false, "url": "", "type": "dingtalk"}}'
+        help_text='{"email": {"enabled": false, "recipients": []}, "webhook": {"enabled": false, "url": "", "type": "dingtalk"}, "dingtalk": {"enabled": false, "group_ids": [], "template_id": null}}'
     )
 
     # 外部触发
@@ -620,6 +637,95 @@ class EmailTemplate(models.Model):
             subject = subject.replace(placeholder, str(value))
             body = body.replace(placeholder, str(value))
         return subject, body
+
+
+class DingTalkGroup(models.Model):
+    """钉钉群机器人配置（强制加签）"""
+    name = models.CharField(max_length=100, unique=True, verbose_name="群组名称")
+    webhook_url = models.URLField(verbose_name="Webhook 地址")
+    secret = models.CharField(max_length=255, verbose_name="签名密钥")
+    is_active = models.BooleanField(default=True, verbose_name="是否启用")
+    description = models.TextField(blank=True, default='', verbose_name="描述")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        verbose_name = "钉钉群组"
+        verbose_name_plural = "钉钉群组"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class DingTalkTemplate(models.Model):
+    """钉钉消息模板"""
+    VARIABLE_HELP = (
+        ('plan_name', '构建计划名称'),
+        ('status', '构建状态(小写)'),
+        ('status_upper', '构建状态(大写)'),
+        ('status_emoji', '状态表情'),
+        ('trigger_type', '触发方式'),
+        ('triggered_by', '触发人'),
+        ('duration', '执行耗时'),
+        ('jenkins_url', 'Jenkins 构建链接'),
+        ('timestamp', '执行时间'),
+    )
+
+    name = models.CharField(max_length=100, unique=True, verbose_name="模板名称")
+    title_template = models.CharField(
+        max_length=255,
+        default='{{status_emoji}} [Test Master] {{plan_name}} - {{status_upper}}',
+        verbose_name="标题模板",
+    )
+    body_template = models.TextField(
+        default=(
+            "## {{status_emoji}} 自动化构建通知\n\n"
+            "### 基本信息\n"
+            "- 构建计划：{{plan_name}}\n"
+            "- 执行结果：{{status_upper}}\n"
+            "- 执行时间：{{timestamp}}\n"
+            "- 执行耗时：{{duration}}\n\n"
+            "### 触发信息\n"
+            "- 触发方式：{{trigger_type}}\n"
+            "- 触发人：{{triggered_by}}\n\n"
+            "### 构建详情\n"
+            "- Jenkins 链接：{{jenkins_url}}\n\n"
+            "---\n"
+            "说明：\n"
+            "- SUCCESS：所有步骤执行通过\n"
+            "- FAILED：存在失败步骤，请及时排查\n"
+            "- CANCELLED：构建被取消\n"
+        ),
+        verbose_name="正文模板",
+    )
+    is_default = models.BooleanField(default=False, verbose_name="默认模板")
+    is_active = models.BooleanField(default=True, verbose_name="是否启用")
+    description = models.TextField(blank=True, default='', verbose_name="描述")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        verbose_name = "钉钉模板"
+        verbose_name_plural = "钉钉模板"
+        ordering = ['-is_default', '-updated_at']
+
+    def __str__(self):
+        return f"{self.name} {'(默认)' if self.is_default else ''}"
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            DingTalkTemplate.objects.filter(is_default=True).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    def render(self, context: dict) -> tuple:
+        title = self.title_template
+        body = self.body_template
+        for key, value in context.items():
+            placeholder = '{{' + key + '}}'
+            title = title.replace(placeholder, str(value))
+            body = body.replace(placeholder, str(value))
+        return title, body
 
 
 class RegistrationInvite(models.Model):

@@ -283,9 +283,11 @@ const menuItems: MenuItem[] = [
   },
   {
     title: 'common.systemSettings', icon: 'mdi-cog-outline', to: '/settings/email-templates',
-    paths: ['/settings/email-templates'],
+    paths: ['/settings/email-templates', '/settings/dingtalk-groups', '/settings/dingtalk-templates'],
     children: [
       { title: 'common.emailTemplates', to: '/settings/email-templates' },
+      { title: 'common.dingtalkGroups', to: '/settings/dingtalk-groups' },
+      { title: 'common.dingtalkTemplates', to: '/settings/dingtalk-templates' },
     ]
   },
 ]
@@ -336,6 +338,8 @@ const routeNameToI18nKey: Record<string, string> = {
   Profile: 'common.profile',
   EmailTemplates: 'common.emailTemplates',
   Environments: 'common.environments',
+  DingTalkGroups: 'common.dingtalkGroups',
+  DingTalkTemplates: 'common.dingtalkTemplates',
 }
 
 const currentRouteName = computed(() => {

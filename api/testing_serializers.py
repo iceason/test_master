@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate
+from .models import (
+    ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate,
+    DingTalkGroup, DingTalkTemplate,
+)
 
 
 class ExecutorMachineSerializer(serializers.ModelSerializer):
@@ -60,11 +63,17 @@ class BuildPlanSerializer(serializers.ModelSerializer):
             'report_enabled', 'report_command',
             'environment_variables', 'jenkinsfile_text',
             'cron_expression', 'is_cron_enabled',
+            'repeat_run_times', 'repeat_failure_policy',
             'notification_config', 'trigger_token',
             'status', 'created_by', 'created_by_name',
             'created_at', 'updated_at',
             'steps', 'last_execution_status',
         ]
+
+    def validate_repeat_run_times(self, value):
+        if value < 1 or value > 20:
+            raise serializers.ValidationError("repeat_run_times must be between 1 and 20")
+        return value
         read_only_fields = [
             'trigger_token', 'created_by', 'created_at', 'updated_at',
         ]
@@ -130,6 +139,8 @@ class BuildPlanListSerializer(serializers.ModelSerializer):
             'report_enabled', 'report_command',
             'environment_variables', 'jenkinsfile_text',
             'cron_expression', 'is_cron_enabled',
+            'repeat_run_times', 'repeat_failure_policy',
+            'notification_config',
             'trigger_token', 'status',
             'created_by', 'created_by_name',
             'created_at', 'updated_at',
@@ -196,3 +207,43 @@ class EmailTemplateSerializer(serializers.ModelSerializer):
         model = EmailTemplate
         fields = ['id', 'name', 'subject', 'body', 'is_default', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
+
+
+class DingTalkGroupSerializer(serializers.ModelSerializer):
+    has_secret = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DingTalkGroup
+        fields = [
+            'id', 'name', 'webhook_url', 'secret', 'has_secret', 'is_active',
+            'description', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+        extra_kwargs = {
+            'secret': {'write_only': True},
+        }
+
+    def get_has_secret(self, obj):
+        return bool(obj.secret)
+
+    def update(self, instance, validated_data):
+        secret = validated_data.get('secret')
+        if secret is not None and str(secret).strip() == '':
+            validated_data.pop('secret')
+        return super().update(instance, validated_data)
+
+
+class DingTalkTemplateSerializer(serializers.ModelSerializer):
+    variable_help = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DingTalkTemplate
+        fields = [
+            'id', 'name', 'title_template', 'body_template',
+            'is_default', 'is_active', 'description',
+            'variable_help', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'variable_help']
+
+    def get_variable_help(self, obj):
+        return [{'key': key, 'desc': desc} for key, desc in DingTalkTemplate.VARIABLE_HELP]

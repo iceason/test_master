@@ -11,7 +11,7 @@ from .metrics import PrometheusMetricsView
 from .testing_views import (
     ExecutorMachineViewSet, BuildPlanViewSet, BuildExecutionViewSet,
     BuildTriggerView, JenkinsWebhookView, ReportUploadView,
-    EmailTemplateViewSet,
+    EmailTemplateViewSet, DingTalkGroupViewSet, DingTalkTemplateViewSet,
 )
 
 router = DefaultRouter()
@@ -27,6 +27,8 @@ router.register(r'executor-machines', ExecutorMachineViewSet)
 router.register(r'build-plans', BuildPlanViewSet)
 router.register(r'build-executions', BuildExecutionViewSet)
 router.register(r'email-templates', EmailTemplateViewSet)
+router.register(r'dingtalk-groups', DingTalkGroupViewSet)
+router.register(r'dingtalk-templates', DingTalkTemplateViewSet)
 # Project management
 router.register(r'projects', ProjectViewSet, basename='project')
 

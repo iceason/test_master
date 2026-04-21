@@ -5,6 +5,10 @@ Handles Jenkins build triggering, polling, log fetching, reports, and notificati
 import logging
 import time
 import json
+import hmac
+import base64
+import hashlib
+from urllib.parse import quote_plus
 
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -29,6 +33,12 @@ def run_build_task(self, execution_id):
     run_build_sync(execution_id)
 
 
+@shared_task(bind=True, max_retries=1, default_retry_delay=5)
+def run_repeated_builds_task(self, plan_id, triggered_by='system', trigger_type='manual'):
+    """Orchestrate repeated builds for stop-on-first-fail policy."""
+    return run_repeated_builds_sync(plan_id, triggered_by=triggered_by, trigger_type=trigger_type)
+
+
 def _dispatch_build(execution):
     """
     Dispatch a build execution using Celery if available, otherwise fall back
@@ -50,6 +60,94 @@ def _dispatch_build(execution):
     threading.Thread(
         target=run_build_sync, args=(execution.id,), daemon=True
     ).start()
+
+
+def _create_repeat_execution(plan, trigger_type, triggered_by, idx, total):
+    from .models import BuildExecution
+    suffix = f"#{idx}/{total}" if total > 1 else ''
+    return BuildExecution.objects.create(
+        build_plan=plan,
+        executor_machine=plan.executor_machine,
+        trigger_type=trigger_type,
+        triggered_by=f"{triggered_by}{suffix}",
+        status='pending',
+    )
+
+
+def dispatch_repeated_builds(plan, repeat_run_times, failure_policy, triggered_by, trigger_type='manual'):
+    """
+    Dispatch repeated builds according to failure policy.
+    - continue_all: create N executions and dispatch each asynchronously.
+    - stop_on_first_fail: delegate to orchestrator task/thread and run sequentially.
+    """
+    import threading
+    from .views import CELERY_AVAILABLE
+
+    repeat_run_times = max(1, min(int(repeat_run_times or 1), 20))
+    if failure_policy not in ('continue_all', 'stop_on_first_fail'):
+        failure_policy = 'continue_all'
+
+    if failure_policy == 'continue_all':
+        execution_ids = []
+        for idx in range(1, repeat_run_times + 1):
+            execution = _create_repeat_execution(plan, trigger_type, triggered_by, idx, repeat_run_times)
+            execution_ids.append(execution.id)
+            _dispatch_build(execution)
+        return {
+            'execution_ids': execution_ids,
+            'mode': 'parallel_dispatch',
+        }
+
+    # stop_on_first_fail: sequential orchestrator
+    if CELERY_AVAILABLE:
+        task = run_repeated_builds_task.delay(
+            plan.id, triggered_by=triggered_by, trigger_type=trigger_type
+        )
+        return {
+            'execution_ids': [],
+            'mode': 'sequential_orchestrator_celery',
+            'orchestrator_task_id': task.id,
+        }
+
+    threading.Thread(
+        target=run_repeated_builds_sync,
+        args=(plan.id, triggered_by, trigger_type),
+        daemon=True,
+    ).start()
+    return {
+        'execution_ids': [],
+        'mode': 'sequential_orchestrator_thread',
+    }
+
+
+def run_repeated_builds_sync(plan_id, triggered_by='system', trigger_type='manual'):
+    """Sequential repeated build runner; stops on first fail when configured."""
+    from .models import BuildPlan, BuildExecution
+
+    try:
+        plan = BuildPlan.objects.select_related('executor_machine').get(id=plan_id)
+    except BuildPlan.DoesNotExist:
+        logger.error("BuildPlan %s not found for repeated runs", plan_id)
+        return {'execution_ids': [], 'stopped_early': False}
+
+    repeat_run_times = max(1, min(int(getattr(plan, 'repeat_run_times', 1) or 1), 20))
+    failure_policy = getattr(plan, 'repeat_failure_policy', 'continue_all') or 'continue_all'
+
+    execution_ids = []
+    stopped_early = False
+    for idx in range(1, repeat_run_times + 1):
+        execution = _create_repeat_execution(plan, trigger_type, triggered_by, idx, repeat_run_times)
+        execution_ids.append(execution.id)
+        run_build_sync(execution.id)
+        execution = BuildExecution.objects.get(id=execution.id)
+        if failure_policy == 'stop_on_first_fail' and execution.status in ('failed', 'cancelled'):
+            stopped_early = True
+            break
+
+    return {
+        'execution_ids': execution_ids,
+        'stopped_early': stopped_early,
+    }
 
 
 def run_build_sync(execution_id):
@@ -241,7 +339,7 @@ def _send_notification(execution):
         except Exception as e:
             logger.warning("Email notification failed: %s", e)
 
-    # Webhook notification (DingTalk / Feishu / WeChat Work)
+    # Webhook notification (DingTalk / Feishu / WeChat Work) - legacy path
     webhook_cfg = config.get('webhook', {})
     if webhook_cfg.get('enabled') and webhook_cfg.get('url'):
         try:
@@ -255,6 +353,11 @@ def _send_notification(execution):
             )
         except Exception as e:
             logger.warning("Webhook notification failed: %s", e)
+
+    # DingTalk notification (new preferred path)
+    dingtalk_cfg = config.get('dingtalk', {})
+    if dingtalk_cfg.get('enabled'):
+        _send_dingtalk_groups(execution, dingtalk_cfg)
 
 
 def _build_webhook_payload(execution, webhook_type):
@@ -289,6 +392,110 @@ def _build_webhook_payload(execution, webhook_type):
             'msgtype': 'markdown',
             'markdown': {'content': text},
         }
+
+
+def _build_notification_context(execution):
+    status_emoji_map = {
+        'success': '✅', 'failed': '❌', 'cancelled': '⚠️',
+        'running': '🔄', 'pending': '⏳',
+    }
+    return {
+        'plan_name': execution.build_plan.name,
+        'status': execution.status,
+        'status_upper': execution.status.upper(),
+        'status_emoji': status_emoji_map.get(execution.status, '📋'),
+        'trigger_type': execution.trigger_type or 'manual',
+        'triggered_by': execution.triggered_by or 'system',
+        'duration': execution.duration_display,
+        'jenkins_url': execution.jenkins_build_url or '-',
+        'timestamp': execution.started_at.strftime('%Y-%m-%d %H:%M:%S') if execution.started_at else '-',
+    }
+
+
+def _render_dingtalk_template(execution, template_id=None):
+    from .models import DingTalkTemplate
+
+    template = None
+    if template_id:
+        template = DingTalkTemplate.objects.filter(id=template_id, is_active=True).first()
+    if not template:
+        template = DingTalkTemplate.objects.filter(is_default=True, is_active=True).first()
+    if not template:
+        template = DingTalkTemplate.objects.filter(is_active=True).order_by('-updated_at').first()
+
+    ctx = _build_notification_context(execution)
+    if template:
+        return template.render(ctx)
+
+    # Fallback to simple built-in template
+    title = f"{ctx['status_emoji']} [{ctx['status_upper']}] {ctx['plan_name']}"
+    body = (
+        f"### {ctx['status_emoji']} 自动化构建报告\n\n"
+        f"- 构建计划：{ctx['plan_name']}\n"
+        f"- 执行状态：{ctx['status_upper']}\n"
+        f"- 触发方式：{ctx['trigger_type']}\n"
+        f"- 触发人：{ctx['triggered_by']}\n"
+        f"- 执行耗时：{ctx['duration']}\n"
+        f"- 执行时间：{ctx['timestamp']}\n"
+        f"- Jenkins：{ctx['jenkins_url']}\n"
+    )
+    return title, body
+
+
+def _build_dingtalk_signed_url(webhook_url, secret):
+    if not secret:
+        raise ValueError("DingTalk secret is required")
+
+    ts = str(int(time.time() * 1000))
+    string_to_sign = f"{ts}\n{secret}"
+    sign = base64.b64encode(
+        hmac.new(
+            secret.encode('utf-8'),
+            string_to_sign.encode('utf-8'),
+            digestmod=hashlib.sha256,
+        ).digest()
+    ).decode('utf-8')
+    delimiter = '&' if '?' in webhook_url else '?'
+    return f"{webhook_url}{delimiter}timestamp={ts}&sign={quote_plus(sign)}"
+
+
+def send_dingtalk_markdown(webhook_url, secret, title, text):
+    import requests
+
+    signed_url = _build_dingtalk_signed_url(webhook_url, secret)
+    payload = {
+        'msgtype': 'markdown',
+        'markdown': {'title': title, 'text': text},
+    }
+    response = requests.post(signed_url, json=payload, timeout=10)
+    response.raise_for_status()
+    try:
+        result = response.json()
+    except Exception:
+        result = {}
+    if result.get('errcode', 0) != 0:
+        raise ValueError(result.get('errmsg', 'Unknown DingTalk error'))
+
+
+def _send_dingtalk_groups(execution, dingtalk_cfg):
+    from .models import DingTalkGroup
+
+    group_ids = dingtalk_cfg.get('group_ids') or []
+    if not group_ids:
+        return
+
+    template_id = dingtalk_cfg.get('template_id')
+    title, body = _render_dingtalk_template(execution, template_id=template_id)
+    groups = DingTalkGroup.objects.filter(id__in=group_ids, is_active=True)
+    for group in groups:
+        try:
+            send_dingtalk_markdown(group.webhook_url, group.secret, title, body)
+            logger.info("dingtalk_notify success group=%s execution=%s", group.name, execution.id)
+        except Exception as e:
+            logger.warning(
+                "dingtalk_notify failed group=%s execution=%s error=%s",
+                group.name, execution.id, e
+            )
 
 
 @shared_task
