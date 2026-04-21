@@ -10,7 +10,7 @@ from .views import (DirectoryViewSet, InterfaceViewSet, TestCaseViewSet, TestCas
 from .metrics import PrometheusMetricsView
 from .testing_views import (
     ExecutorMachineViewSet, BuildPlanViewSet, BuildExecutionViewSet,
-    BuildTriggerView, JenkinsWebhookView, ReportUploadView,
+    BuildTriggerView, BuildTriggerNoTokenView, JenkinsWebhookView, ReportUploadView,
     EmailTemplateViewSet, DingTalkGroupViewSet, DingTalkTemplateViewSet,
 )
 
@@ -48,6 +48,7 @@ urlpatterns = [
     path('tasks/<str:task_id>/', TaskStatusView.as_view(), name='task_status'),
     path('metrics/', PrometheusMetricsView.as_view(), name='prometheus_metrics'),
     # Testing module - external endpoints
+    path('build-trigger/', BuildTriggerNoTokenView.as_view(), name='build_trigger_no_token'),
     path('build-trigger/<str:trigger_token>/', BuildTriggerView.as_view(), name='build_trigger'),
     path('jenkins-webhook/', JenkinsWebhookView.as_view(), name='jenkins_webhook'),
     path('upload-report/<int:execution_id>/', ReportUploadView.as_view(), name='upload_report'),

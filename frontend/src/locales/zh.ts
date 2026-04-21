@@ -266,8 +266,8 @@ export default {
       edit: '编辑构建计划',
       trigger: '触发构建',
       triggerConfirm: '确定要触发构建吗？',
-      copyTriggerUrl: '复制触发链接',
-      triggerUrlCopied: '触发链接已复制',
+      copyTriggerUrl: '复制免 Token 触发链接',
+      triggerUrlCopied: '免 Token 触发链接已复制',
       fields: {
         name: '计划名称',
         description: '描述',

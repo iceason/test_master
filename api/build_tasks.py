@@ -215,6 +215,7 @@ def run_build_sync(execution_id):
 
         # 6. Send notification
         _send_notification(execution)
+        _send_external_callback(execution)
 
     except Exception as e:
         logger.exception("Build execution %s failed", execution_id)
@@ -226,6 +227,7 @@ def run_build_sync(execution_id):
             execution.duration_ms = int(delta.total_seconds() * 1000)
         execution.save()
         _send_notification(execution)
+        _send_external_callback(execution)
 
 
 def _build_jenkins_params(plan):
@@ -358,6 +360,41 @@ def _send_notification(execution):
     dingtalk_cfg = config.get('dingtalk', {})
     if dingtalk_cfg.get('enabled'):
         _send_dingtalk_groups(execution, dingtalk_cfg)
+
+
+def _send_external_callback(execution):
+    """Callback build result to external URL once."""
+    if not execution.callback_url or execution.callback_notified:
+        return
+    if execution.status not in ('success', 'failed', 'cancelled'):
+        return
+    try:
+        import requests
+        payload = {
+            'execution_id': execution.id,
+            'build_plan_id': execution.build_plan_id,
+            'build_plan_name': execution.build_plan.name,
+            'status': execution.status,
+            'trigger_type': execution.trigger_type,
+            'triggered_by': execution.triggered_by,
+            'jenkins_build_number': execution.jenkins_build_number,
+            'jenkins_build_url': execution.jenkins_build_url,
+            'report_type': execution.report_type,
+            'report_url': execution.report_url,
+            'started_at': execution.started_at.isoformat() if execution.started_at else None,
+            'finished_at': execution.finished_at.isoformat() if execution.finished_at else None,
+            'duration_ms': execution.duration_ms,
+        }
+        response = requests.post(execution.callback_url, json=payload, timeout=10)
+        execution.callback_notified = response.status_code < 400
+        execution.callback_notified_at = timezone.now()
+        execution.callback_last_response = f"HTTP {response.status_code}: {response.text[:300]}"
+        execution.save(update_fields=['callback_notified', 'callback_notified_at', 'callback_last_response'])
+    except Exception as e:
+        execution.callback_notified = False
+        execution.callback_notified_at = timezone.now()
+        execution.callback_last_response = f"ERROR: {e}"
+        execution.save(update_fields=['callback_notified', 'callback_notified_at', 'callback_last_response'])
 
 
 def _build_webhook_payload(execution, webhook_type):
@@ -505,6 +542,7 @@ def send_build_notification(execution_id):
     try:
         execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
         _send_notification(execution)
+        _send_external_callback(execution)
     except BuildExecution.DoesNotExist:
         logger.error("BuildExecution %s not found for notification", execution_id)
 

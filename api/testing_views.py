@@ -453,7 +453,7 @@ class BuildTriggerView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
 
-    def post(self, request, trigger_token):
+    def _trigger(self, request, trigger_token, payload):
         try:
             plan = BuildPlan.objects.select_related(
                 'executor_machine'
@@ -480,13 +480,15 @@ class BuildTriggerView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        triggered_by = request.data.get('triggered_by', 'external_api')
+        triggered_by = payload.get('triggered_by', 'external_api')
+        callback_url = payload.get('callback_url', '')
 
         execution = BuildExecution.objects.create(
             build_plan=plan,
             executor_machine=plan.executor_machine,
             trigger_type='api',
             triggered_by=triggered_by,
+            callback_url=callback_url or '',
             status='pending',
         )
 
@@ -498,6 +500,111 @@ class BuildTriggerView(APIView):
             'build_plan': plan.name,
             'status': 'accepted',
         }, status=status.HTTP_202_ACCEPTED)
+
+    def post(self, request, trigger_token):
+        return self._trigger(request, trigger_token, request.data or {})
+
+    def get(self, request, trigger_token):
+        payload = {
+            'triggered_by': request.query_params.get('triggered_by', 'external_api_get'),
+            'callback_url': request.query_params.get('callback_url', ''),
+        }
+        return self._trigger(request, trigger_token, payload)
+
+
+class BuildTriggerNoTokenView(APIView):
+    """
+    GET/POST /api/build-trigger/
+    External trigger endpoint without trigger token.
+    Requires identifying target plan by `plan_id` or `plan_name`.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def _trigger_plan(self, plan, payload):
+        if plan.status != 'active':
+            return Response(
+                {'error': 'Build plan is disabled'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not plan.executor_machine or not plan.executor_machine.jenkins_url:
+            return Response(
+                {'error': 'No executor machine with Jenkins configured'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not plan.jenkins_job_name:
+            try:
+                from .jenkins_client import sync_jenkins_job
+                sync_jenkins_job(plan)
+            except Exception as e:
+                return Response(
+                    {'error': f'Failed to create Jenkins job: {e}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        triggered_by = payload.get('triggered_by', 'external_api_no_token')
+        callback_url = payload.get('callback_url', '')
+
+        execution = BuildExecution.objects.create(
+            build_plan=plan,
+            executor_machine=plan.executor_machine,
+            trigger_type='api',
+            triggered_by=triggered_by,
+            callback_url=callback_url or '',
+            status='pending',
+        )
+
+        from .build_tasks import _dispatch_build
+        _dispatch_build(execution)
+
+        return Response({
+            'execution_id': execution.id,
+            'build_plan': plan.name,
+            'status': 'accepted',
+        }, status=status.HTTP_202_ACCEPTED)
+
+    def _resolve_plan(self, payload):
+        plan_id = payload.get('plan_id')
+        plan_name = payload.get('plan_name')
+
+        if not plan_id and not plan_name:
+            return None, Response(
+                {'error': 'Missing plan_id or plan_name'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            if plan_id:
+                plan = BuildPlan.objects.select_related('executor_machine').get(id=plan_id)
+            else:
+                plan = BuildPlan.objects.select_related('executor_machine').get(name=plan_name)
+            return plan, None
+        except BuildPlan.DoesNotExist:
+            return None, Response(
+                {'error': 'Build plan not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+    def get(self, request):
+        payload = {
+            'plan_id': request.query_params.get('plan_id'),
+            'plan_name': request.query_params.get('plan_name'),
+            'triggered_by': request.query_params.get('triggered_by', 'external_api_no_token_get'),
+            'callback_url': request.query_params.get('callback_url', ''),
+        }
+        plan, error = self._resolve_plan(payload)
+        if error:
+            return error
+        return self._trigger_plan(plan, payload)
+
+    def post(self, request):
+        payload = request.data or {}
+        plan, error = self._resolve_plan(payload)
+        if error:
+            return error
+        return self._trigger_plan(plan, payload)
 
 
 # -----------------------------------------------------------------------

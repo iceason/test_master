@@ -736,7 +736,7 @@ const stopBuild = async (item: any) => {
 }
 
 const copyTriggerUrl = (item: any) => {
-  const url = `${window.location.origin}/api/build-trigger/${item.trigger_token}/`
+  const url = `${window.location.origin}/api/build-trigger/?plan_id=${item.id}`
   navigator.clipboard.writeText(url)
   snackbar.notify(t('testing.plans.triggerUrlCopied'), 'success')
 }

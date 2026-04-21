@@ -274,11 +274,11 @@ const menuItems: MenuItem[] = [
     ]
   },
   {
-    title: 'common.continuousBuild', icon: 'mdi-play-circle-outline', to: '/testing/agents',
+    title: 'common.continuousBuild', icon: 'mdi-play-circle-outline', to: '/testing/plans',
     paths: ['/testing/agents', '/testing/plans'],
     children: [
-      { title: 'common.executorAgents', to: '/testing/agents' },
       { title: 'common.buildPlans', to: '/testing/plans' },
+      { title: 'common.executorAgents', to: '/testing/agents' },
     ]
   },
   {

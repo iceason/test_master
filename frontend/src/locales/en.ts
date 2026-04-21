@@ -266,8 +266,8 @@ export default {
       edit: 'Edit Build Plan',
       trigger: 'Trigger Build',
       triggerConfirm: 'Are you sure you want to trigger a build?',
-      copyTriggerUrl: 'Copy Trigger URL',
-      triggerUrlCopied: 'Trigger URL copied',
+      copyTriggerUrl: 'Copy No-Token Trigger URL',
+      triggerUrlCopied: 'No-token trigger URL copied',
       fields: {
         name: 'Plan Name',
         description: 'Description',

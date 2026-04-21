@@ -534,6 +534,10 @@ class BuildExecution(models.Model):
 
     # Celery
     celery_task_id = models.CharField(max_length=255, blank=True, verbose_name="Celery 任务ID")
+    callback_url = models.URLField(blank=True, verbose_name="结果回调地址")
+    callback_notified = models.BooleanField(default=False, verbose_name="是否已回调")
+    callback_notified_at = models.DateTimeField(null=True, blank=True, verbose_name="回调时间")
+    callback_last_response = models.TextField(blank=True, verbose_name="回调响应摘要")
 
     class Meta:
         verbose_name = "构建执行记录"
