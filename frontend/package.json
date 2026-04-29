@@ -50,7 +50,7 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,vue}": [
-      "eslint --fix",
+      "node scripts/eslint-legacy.cjs --fix",
       "prettier --write"
     ],
     "src/**/*.{css,json}": [

@@ -30,9 +30,75 @@ from .testing_serializers import (
     BuildExecutionSerializer, BuildExecutionListSerializer,
     EmailTemplateSerializer,
     DingTalkGroupSerializer, DingTalkTemplateSerializer,
+    resolve_backend_base_url_fallback,
+    absolute_report_url,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_report_results_dir(report_results_dir):
+    val = (report_results_dir or '').strip()
+    return val or 'allure-results'
+
+
+def _legacy_report_commands():
+    return {
+        'linux': (
+            'curl -f -X POST -F "report=@report.zip" '
+            '"$BACKEND_BASE_URL/api/upload-report/$EXECUTION_ID/"'
+        ),
+        'windows': (
+            'curl.exe -f -X POST -F "report=@report.zip" '
+            '"%BACKEND_BASE_URL%/api/upload-report/%EXECUTION_ID%/"'
+        ),
+    }
+
+
+def build_default_report_command(os_type='linux', report_results_dir='allure-results'):
+    """Return the default report upload command by executor OS type."""
+    results_dir = _normalize_report_results_dir(report_results_dir)
+    if (os_type or '').lower() == 'windows':
+        return (
+            '@echo off\n'
+            f'set "REPORT_DIR={results_dir}"\n'
+            'if exist "%REPORT_DIR%" (\n'
+            '  if exist report.zip del /f /q report.zip\n'
+            '  powershell -NoProfile -Command "Compress-Archive -Path \'%REPORT_DIR%\\*\' -DestinationPath \'report.zip\' -Force"\n'
+            '  curl.exe -f -X POST -F "report=@report.zip" "%BACKEND_BASE_URL%/api/upload-report/%EXECUTION_ID%/"\n'
+            ') else (\n'
+            '  echo [TestMaster] Allure results dir not found, skip report upload.\n'
+            ')'
+        )
+    return (
+        f'REPORT_DIR="{results_dir}"\n'
+        'if [ -d "$REPORT_DIR" ]; then\n'
+        '  rm -f report.zip\n'
+        '  zip -r report.zip "$REPORT_DIR"\n'
+        '  curl -f -X POST -F "report=@report.zip" "$BACKEND_BASE_URL/api/upload-report/$EXECUTION_ID/"\n'
+        'else\n'
+        '  echo "[TestMaster] Allure results dir not found, skip report upload."\n'
+        'fi'
+    )
+
+
+def is_legacy_report_command(report_command):
+    cmd = (report_command or '').strip()
+    if not cmd:
+        return False
+    legacy = _legacy_report_commands()
+    return cmd in {legacy['linux'], legacy['windows']}
+
+
+def is_managed_default_report_command(report_command):
+    cmd = (report_command or '').strip()
+    if not cmd:
+        return False
+    return (
+        'skip report upload' in cmd
+        and 'upload-report/' in cmd
+        and 'report=@report.zip' in cmd
+    )
 
 
 # -----------------------------------------------------------------------
@@ -133,6 +199,24 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
             logger.warning("Failed to sync Jenkins job for plan %s: %s", plan.id, e)
             return {'jenkins_sync': 'error', 'jenkins_error': err_msg}
 
+    def _finalize_jenkinsfile_report_upload(self, plan):
+        """Merge TestMaster report upload into saved Jenkinsfile (idempotent)."""
+        text = (plan.jenkinsfile_text or '').strip()
+        if not text:
+            return
+        from .jenkins_client import finalize_jenkinsfile_for_plan
+        machine = plan.executor_machine
+        os_type = getattr(machine, 'os_type', 'linux') if machine else 'linux'
+        new_text = finalize_jenkinsfile_for_plan(
+            plan.jenkinsfile_text or '',
+            report_enabled=plan.report_enabled,
+            report_command=plan.report_command or '',
+            os_type=os_type,
+        )
+        if new_text != (plan.jenkinsfile_text or ''):
+            plan.jenkinsfile_text = new_text
+            plan.save(update_fields=['jenkinsfile_text', 'updated_at'])
+
     def _ensure_jenkinsfile_text(self, plan):
         """If jenkinsfile_text is empty (visual mode save), generate from steps."""
         if not plan.jenkinsfile_text:
@@ -149,22 +233,47 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
                 git_branch=plan.git_branch or 'main',
                 workspace_cleanup=plan.workspace_cleanup,
                 report_enabled=plan.report_enabled,
+                report_results_dir=plan.report_results_dir or 'allure-results',
                 report_command=plan.report_command or '',
+                build_plan_id=plan.id,
                 environment_variables=plan.environment_variables or [],
                 git_credential_id=getattr(plan, 'git_credential_id', '') or '',
             )
             plan.save(update_fields=['jenkinsfile_text'])
 
+    def _ensure_default_report_command(self, plan):
+        """Fill/upgrade report command from executor OS when enabled."""
+        if not plan.report_enabled:
+            return
+        if not (plan.report_results_dir or '').strip():
+            plan.report_results_dir = 'allure-results'
+            plan.save(update_fields=['report_results_dir', 'updated_at'])
+        if (plan.report_command or '').strip() and not (
+            is_legacy_report_command(plan.report_command)
+            or is_managed_default_report_command(plan.report_command)
+        ):
+            return
+        machine = plan.executor_machine
+        os_type = getattr(machine, 'os_type', 'linux') if machine else 'linux'
+        plan.report_command = build_default_report_command(
+            os_type, plan.report_results_dir or 'allure-results'
+        )
+        plan.save(update_fields=['report_command', 'updated_at'])
+
     def perform_create(self, serializer):
         plan = serializer.save()
+        self._ensure_default_report_command(plan)
         self._ensure_jenkinsfile_text(plan)
+        self._finalize_jenkinsfile_report_upload(plan)
         sync_result = self._sync_jenkins_job(plan)
         if sync_result:
             plan._sync_result = sync_result
 
     def perform_update(self, serializer):
         plan = serializer.save()
+        self._ensure_default_report_command(plan)
         self._ensure_jenkinsfile_text(plan)
+        self._finalize_jenkinsfile_report_upload(plan)
         sync_result = self._sync_jenkins_job(plan)
         if sync_result:
             plan._sync_result = sync_result
@@ -183,13 +292,27 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
             response.data['_jenkins'] = plan._sync_result
         return response
 
+    @action(detail=False, methods=['get'], url_path='jenkins-env')
+    def jenkins_env(self, request):
+        """Public base URL for Jenkinsfile BACKEND_BASE_URL (from settings or this request)."""
+        return Response({'backend_base_url': resolve_backend_base_url_fallback()})
+
     @action(detail=True, methods=['get'], url_path='jenkinsfile_preview')
     def jenkinsfile_preview(self, request, pk=None):
         """Return the Jenkinsfile script that would be pushed to Jenkins."""
         plan = self.get_object()
         raw_jenkinsfile = getattr(plan, 'jenkinsfile_text', '') or ''
         if raw_jenkinsfile:
-            return Response({'jenkinsfile': raw_jenkinsfile})
+            from .jenkins_client import finalize_jenkinsfile_for_plan
+            machine = plan.executor_machine
+            os_type = getattr(machine, 'os_type', 'linux') if machine else 'linux'
+            text = finalize_jenkinsfile_for_plan(
+                raw_jenkinsfile,
+                report_enabled=getattr(plan, 'report_enabled', False),
+                report_command=getattr(plan, 'report_command', '') or '',
+                os_type=os_type,
+            )
+            return Response({'jenkinsfile': text})
 
         from .jenkins_client import build_pipeline_script
         machine = plan.executor_machine
@@ -204,7 +327,9 @@ class BuildPlanViewSet(viewsets.ModelViewSet):
             git_branch=getattr(plan, 'git_branch', 'main') or 'main',
             workspace_cleanup=getattr(plan, 'workspace_cleanup', True),
             report_enabled=getattr(plan, 'report_enabled', False),
+            report_results_dir=getattr(plan, 'report_results_dir', 'allure-results') or 'allure-results',
             report_command=getattr(plan, 'report_command', '') or '',
+            build_plan_id=getattr(plan, 'id', None),
             environment_variables=getattr(plan, 'environment_variables', None) or [],
             git_credential_id=getattr(plan, 'git_credential_id', '') or '',
         )
@@ -392,7 +517,7 @@ class BuildExecutionViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({
             'execution_id': execution.id,
             'report_type': execution.report_type,
-            'report_url': execution.report_url,
+            'report_url': absolute_report_url(execution.report_url, request),
             'report_data': execution.report_data,
         })
 
@@ -729,13 +854,29 @@ class ReportUploadView(APIView):
             )
 
         report_url = f'/media/reports/{execution_id}/index.html'
+        root_index = os.path.join(report_dir, 'index.html')
+        nested_index = os.path.join(report_dir, 'allure-report', 'index.html')
+        if not os.path.exists(root_index) and os.path.exists(nested_index):
+            report_url = f'/media/reports/{execution_id}/allure-report/index.html'
+        elif not os.path.exists(root_index):
+            return Response(
+                {'error': 'Report index.html not found after extraction'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         execution.report_type = 'allure'
         execution.report_url = report_url
         execution.save(update_fields=['report_type', 'report_url'])
 
+        try:
+            from .build_tasks import send_report_upload_followup_if_needed
+            send_report_upload_followup_if_needed.delay(execution.id)
+        except Exception:
+            pass
+
         return Response({
             'status': 'ok',
-            'report_url': report_url,
+            'report_url': absolute_report_url(report_url, request),
         })
 
 

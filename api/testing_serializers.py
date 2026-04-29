@@ -1,8 +1,71 @@
+from django.conf import settings
 from rest_framework import serializers
 from .models import (
     ExecutorMachine, BuildPlan, BuildStep, BuildExecution, EmailTemplate,
     DingTalkGroup, DingTalkTemplate,
 )
+
+
+def resolve_backend_base_url_fallback():
+    explicit = getattr(settings, 'BACKEND_BASE_URL', '') or ''
+    if explicit.strip():
+        return explicit.strip().rstrip('/')
+    # Avoid inferring from request host (can be Jenkins reverse proxy host/port).
+    return 'http://127.0.0.1:8000'
+
+
+def absolute_report_url(stored_url, _request=None):
+    """
+    Return a browser-loadable report URL.
+
+    - Default: path-only ``/media/...`` so the iframe uses the **same origin as the SPA**
+      (Vite or nginx proxies ``/media`` to Django). Avoids opening Jenkins-only IPs/ports.
+    - If ``REPORT_PUBLIC_BASE_URL`` is set (public URL where /media is served), prefix with it.
+      Do **not** use ``BACKEND_BASE_URL`` here—that value is for Jenkins curl, often unreachable
+      from a developer browser (e.g. 192.168.x.x:8000 when Django only listens on 127.0.0.1).
+
+    ``_request`` is accepted for call-site compatibility; host inference is intentionally not
+    used here (Vite changeOrigin breaks request.build_absolute_uri for media).
+    """
+    u = (stored_url or '').strip()
+    if not u:
+        return ''
+    if u.startswith('http://') or u.startswith('https://'):
+        return u
+    if not u.startswith('/'):
+        u = '/' + u
+    public = (getattr(settings, 'REPORT_PUBLIC_BASE_URL', '') or '').strip().rstrip('/')
+    if public:
+        return public + u
+    return u
+
+
+def report_url_for_notification(stored_url):
+    """
+    Absolute http(s) URL for DingTalk / email / webhooks.
+
+    Relative ``/media/...`` is prefixed in order:
+    ``REPORT_PUBLIC_BASE_URL`` (optional dedicated origin) →
+    ``FRONTEND_BASE_URL`` (SPA + Vite/nginx 反代 /media，推荐局域网填 http://192.168.x.x:3334) →
+    ``BACKEND_BASE_URL`` → dev fallback ``http://127.0.0.1:8000``.
+    """
+    u = (stored_url or '').strip()
+    if not u:
+        return ''
+    if u.startswith('http://') or u.startswith('https://'):
+        return u
+    if not u.startswith('/'):
+        u = '/' + u
+    for base in (
+        getattr(settings, 'REPORT_PUBLIC_BASE_URL', '') or '',
+        getattr(settings, 'FRONTEND_BASE_URL', '') or '',
+        getattr(settings, 'BACKEND_BASE_URL', '') or '',
+        resolve_backend_base_url_fallback(),
+    ):
+        b = base.strip().rstrip('/')
+        if b:
+            return b + u
+    return u
 
 
 class ExecutorMachineSerializer(serializers.ModelSerializer):
@@ -49,6 +112,7 @@ class BuildPlanSerializer(serializers.ModelSerializer):
     environment_name = serializers.CharField(
         source='environment.name', read_only=True, default='')
     last_execution_status = serializers.SerializerMethodField()
+    backend_base_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BuildPlan
@@ -60,7 +124,7 @@ class BuildPlanSerializer(serializers.ModelSerializer):
             'jenkins_job_name',
             'git_repo_url', 'git_branch', 'git_credential_id',
             'workspace_cleanup',
-            'report_enabled', 'report_command',
+            'report_enabled', 'report_results_dir', 'report_command',
             'environment_variables', 'jenkinsfile_text',
             'cron_expression', 'is_cron_enabled',
             'repeat_run_times', 'repeat_failure_policy',
@@ -68,6 +132,7 @@ class BuildPlanSerializer(serializers.ModelSerializer):
             'status', 'created_by', 'created_by_name',
             'created_at', 'updated_at',
             'steps', 'last_execution_status',
+            'backend_base_url',
         ]
 
     def validate_repeat_run_times(self, value):
@@ -87,6 +152,9 @@ class BuildPlanSerializer(serializers.ModelSerializer):
                 'started_at': last.started_at,
             }
         return None
+
+    def get_backend_base_url(self, obj):
+        return resolve_backend_base_url_fallback()
 
     def create(self, validated_data):
         steps_data = validated_data.pop('steps', [])
@@ -136,7 +204,7 @@ class BuildPlanListSerializer(serializers.ModelSerializer):
             'jenkins_job_name',
             'git_repo_url', 'git_branch', 'git_credential_id',
             'workspace_cleanup',
-            'report_enabled', 'report_command',
+            'report_enabled', 'report_results_dir', 'report_command',
             'environment_variables', 'jenkinsfile_text',
             'cron_expression', 'is_cron_enabled',
             'repeat_run_times', 'repeat_failure_policy',
@@ -164,6 +232,7 @@ class BuildExecutionSerializer(serializers.ModelSerializer):
     executor_machine_name = serializers.CharField(
         source='executor_machine.name', read_only=True, default='')
     duration_display = serializers.CharField(read_only=True)
+    report_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BuildExecution
@@ -182,6 +251,10 @@ class BuildExecutionSerializer(serializers.ModelSerializer):
             'started_at', 'finished_at', 'duration_ms', 'celery_task_id',
         ]
 
+    def get_report_url(self, obj):
+        request = self.context.get('request')
+        return absolute_report_url(obj.report_url, request)
+
 
 class BuildExecutionListSerializer(serializers.ModelSerializer):
     build_plan_name = serializers.CharField(
@@ -189,6 +262,7 @@ class BuildExecutionListSerializer(serializers.ModelSerializer):
     executor_machine_name = serializers.CharField(
         source='executor_machine.name', read_only=True, default='')
     duration_display = serializers.CharField(read_only=True)
+    report_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BuildExecution
@@ -202,6 +276,10 @@ class BuildExecutionListSerializer(serializers.ModelSerializer):
             'started_at', 'finished_at', 'duration_ms',
             'duration_display',
         ]
+
+    def get_report_url(self, obj):
+        request = self.context.get('request')
+        return absolute_report_url(obj.report_url, request)
 
 
 class EmailTemplateSerializer(serializers.ModelSerializer):

@@ -3,27 +3,61 @@
     <!-- Top Bar -->
     <div class="detail-topbar mb-5">
       <div class="d-flex align-center">
-        <v-btn icon="mdi-arrow-left" variant="text" size="small" class="mr-2" @click="$router.back()" />
+        <v-btn
+          icon="mdi-arrow-left"
+          variant="text"
+          size="small"
+          class="mr-2"
+          @click="$router.back()"
+        />
         <div class="flex-grow-1">
           <div class="d-flex align-center ga-3">
             <span class="text-h6 font-weight-bold">{{ plan.name }}</span>
             <v-chip
               :color="plan.status === 'active' ? 'success' : 'grey'"
-              size="small" variant="flat" class="font-weight-bold"
+              size="small"
+              variant="flat"
+              class="font-weight-bold"
             >
-              {{ plan.status === 'active' ? $t('testing.plans.status.active') : $t('testing.plans.status.disabled') }}
+              {{
+                plan.status === 'active'
+                  ? $t('testing.plans.status.active')
+                  : $t('testing.plans.status.disabled')
+              }}
             </v-chip>
-            <v-chip v-if="latestExec" :color="getExecStatusColor(latestExec.status)" size="small" variant="tonal">
+            <v-chip
+              v-if="latestExec"
+              :color="getExecStatusColor(latestExec.status)"
+              size="small"
+              variant="tonal"
+            >
               {{ $t(`testing.executions.status.${latestExec.status}`) }}
             </v-chip>
           </div>
-          <div v-if="plan.description" class="text-body-2 text-medium-emphasis mt-1">{{ plan.description }}</div>
+          <div v-if="plan.description" class="text-body-2 text-medium-emphasis mt-1">
+            {{ plan.description }}
+          </div>
         </div>
         <div class="d-flex align-center ga-2">
-          <v-btn color="default" variant="tonal" prepend-icon="mdi-refresh" @click="refreshStatus" :loading="refreshing" class="text-none" size="small">
+          <v-btn
+            color="default"
+            variant="tonal"
+            prepend-icon="mdi-refresh"
+            :loading="refreshing"
+            class="text-none"
+            size="small"
+            @click="refreshStatus"
+          >
             {{ $t('common.refresh') }}
           </v-btn>
-          <v-btn color="teal" prepend-icon="mdi-play-circle-outline" @click="confirmTriggerDialog = true" :loading="triggering" class="text-none" variant="flat">
+          <v-btn
+            color="teal"
+            prepend-icon="mdi-play-circle-outline"
+            :loading="triggering"
+            class="text-none"
+            variant="flat"
+            @click="confirmTriggerDialog = true"
+          >
             {{ $t('testing.plans.trigger') }}
           </v-btn>
         </div>
@@ -54,8 +88,15 @@
         </div>
         <div class="meta-divider" />
         <div class="meta-item">
-          <v-avatar size="40" :color="plan.is_cron_enabled ? 'orange' : 'grey'" variant="tonal" class="meta-icon">
-            <v-icon size="22" :color="plan.is_cron_enabled ? 'orange' : 'grey'">mdi-timer-cog-outline</v-icon>
+          <v-avatar
+            size="40"
+            :color="plan.is_cron_enabled ? 'orange' : 'grey'"
+            variant="tonal"
+            class="meta-icon"
+          >
+            <v-icon size="22" :color="plan.is_cron_enabled ? 'orange' : 'grey'"
+              >mdi-timer-cog-outline</v-icon
+            >
           </v-avatar>
           <div class="meta-text">
             <div class="meta-label">{{ t('testing.plans.detail.scheduledTask') }}</div>
@@ -64,7 +105,9 @@
                 <v-icon size="10" color="success" class="mr-1">mdi-circle</v-icon>
                 {{ plan.cron_expression }}
               </template>
-              <span v-else class="text-medium-emphasis">{{ t('testing.plans.detail.notEnabled') }}</span>
+              <span v-else class="text-medium-emphasis">{{
+                t('testing.plans.detail.notEnabled')
+              }}</span>
             </div>
           </div>
         </div>
@@ -75,7 +118,9 @@
           </v-avatar>
           <div class="meta-text">
             <div class="meta-label">{{ t('testing.plans.detail.buildSteps') }}</div>
-            <div class="meta-value">{{ (plan.steps || []).length }} {{ t('testing.plans.detail.stepsUnit') }}</div>
+            <div class="meta-value">
+              {{ (plan.steps || []).length }} {{ t('testing.plans.detail.stepsUnit') }}
+            </div>
           </div>
         </div>
         <div class="meta-divider" />
@@ -87,12 +132,19 @@
             <div class="meta-label">{{ t('testing.plans.detail.latestBuild') }}</div>
             <div class="meta-value">
               <template v-if="latestExec">
-                <v-chip :color="getExecStatusColor(latestExec.status)" size="x-small" variant="flat" class="mr-1">
+                <v-chip
+                  :color="getExecStatusColor(latestExec.status)"
+                  size="x-small"
+                  variant="flat"
+                  class="mr-1"
+                >
                   {{ latestExec.status.toUpperCase() }}
                 </v-chip>
                 {{ formatDate(latestExec.started_at) }}
               </template>
-              <span v-else class="text-medium-emphasis">{{ t('testing.plans.detail.noRecord') }}</span>
+              <span v-else class="text-medium-emphasis">{{
+                t('testing.plans.detail.noRecord')
+              }}</span>
             </div>
           </div>
         </div>
@@ -100,7 +152,13 @@
     </v-sheet>
 
     <!-- Extended Info (Git / Report) -->
-    <v-sheet v-if="plan.git_repo_url || plan.report_enabled || hasEnvVars" class="rounded-xl mb-5 pa-5" color="surface" elevation="0" style="border: 1px solid rgba(0,0,0,0.06);">
+    <v-sheet
+      v-if="plan.git_repo_url || plan.report_enabled || hasEnvVars"
+      class="rounded-xl mb-5 pa-5"
+      color="surface"
+      elevation="0"
+      style="border: 1px solid rgba(0, 0, 0, 0.06)"
+    >
       <v-row dense>
         <v-col v-if="plan.git_repo_url" cols="12" md="6">
           <div class="ext-section">
@@ -114,7 +172,9 @@
             </div>
             <div class="ext-row">
               <span class="ext-key">{{ t('testing.plans.detail.branch') }}</span>
-              <v-chip size="x-small" color="info" variant="flat">{{ plan.git_branch || 'main' }}</v-chip>
+              <v-chip size="x-small" color="info" variant="flat">{{
+                plan.git_branch || 'main'
+              }}</v-chip>
             </div>
             <div v-if="plan.git_credential_id" class="ext-row">
               <span class="ext-key">{{ t('testing.plans.detail.credentialId') }}</span>
@@ -130,7 +190,9 @@
             </div>
             <div class="ext-row">
               <span class="ext-key">{{ t('testing.plans.detail.report') }}</span>
-              <v-chip size="x-small" color="success" variant="flat">{{ t('testing.plans.detail.enabled') }}</v-chip>
+              <v-chip size="x-small" color="success" variant="flat">{{
+                t('testing.plans.detail.enabled')
+              }}</v-chip>
             </div>
             <div v-if="plan.report_command" class="ext-row">
               <span class="ext-key">{{ t('testing.plans.detail.command') }}</span>
@@ -145,7 +207,14 @@
               {{ t('testing.plans.detail.envVars') }}
             </div>
             <div class="env-chips">
-              <v-chip v-for="ev in plan.environment_variables" :key="ev.key" size="small" variant="outlined" color="teal" class="mr-2 mb-1">
+              <v-chip
+                v-for="ev in plan.environment_variables"
+                :key="ev.key"
+                size="small"
+                variant="outlined"
+                color="teal"
+                class="mr-2 mb-1"
+              >
                 <span class="font-weight-bold">{{ ev.key }}</span>
                 <span class="text-medium-emphasis mx-1">=</span>
                 <span>{{ ev.value }}</span>
@@ -157,55 +226,99 @@
     </v-sheet>
 
     <!-- Executions -->
-    <v-sheet class="rounded-xl" elevation="0" style="border: 1px solid rgba(0,0,0,0.06);">
+    <v-sheet class="rounded-xl" elevation="0" style="border: 1px solid rgba(0, 0, 0, 0.06)">
       <div class="d-flex align-center px-5 pt-4 pb-2">
         <v-icon size="20" color="teal" class="mr-2">mdi-history</v-icon>
-        <span class="text-subtitle-1 font-weight-bold">{{ t('testing.plans.detail.execHistory') }}</span>
+        <span class="text-subtitle-1 font-weight-bold">{{
+          t('testing.plans.detail.execHistory')
+        }}</span>
         <v-spacer />
-        <v-chip size="x-small" variant="tonal" color="default">{{ executions.length }} {{ t('testing.plans.detail.recordUnit') }}</v-chip>
+        <v-chip size="x-small" variant="tonal" color="default"
+          >{{ executions.length }} {{ t('testing.plans.detail.recordUnit') }}</v-chip
+        >
       </div>
       <v-data-table
-        :headers="execHeaders" :items="executions" :loading="loadingExec" hover
-        @click:row="(_e: any, { item }: any) => showExecDetail(item)"
+        :headers="execHeaders"
+        :items="executions"
+        :loading="loadingExec"
+        hover
         class="exec-table"
+        @click:row="(_e: any, { item }: any) => showExecDetail(item)"
       >
-        <template v-slot:item.status="{ item }">
-          <v-chip :color="getExecStatusColor(item.status)" size="small" variant="flat" class="font-weight-bold">
+        <template #[`item.status`]="{ item }">
+          <v-chip
+            :color="getExecStatusColor(item.status)"
+            size="small"
+            variant="flat"
+            class="font-weight-bold"
+          >
             {{ $t(`testing.executions.status.${item.status}`) }}
           </v-chip>
         </template>
-        <template v-slot:item.trigger_type="{ item }">
+        <template #[`item.trigger_type`]="{ item }">
           <v-chip size="small" variant="tonal" color="default">
             {{ $t(`testing.executions.triggerType.${item.trigger_type}`) }}
           </v-chip>
         </template>
-        <template v-slot:item.started_at="{ item }">
+        <template #[`item.started_at`]="{ item }">
           {{ formatDate(item.started_at) }}
         </template>
-        <template v-slot:item.actions="{ item }">
+        <template #[`item.actions`]="{ item }">
           <div class="d-flex" @click.stop>
             <v-tooltip :text="t('testing.plans.detail.viewLogs')" location="top">
-              <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" icon="mdi-text-long" size="small" variant="text" color="info" @click="showLogs(item)" />
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-text-long"
+                  size="small"
+                  variant="text"
+                  color="info"
+                  @click="showLogs(item)"
+                />
               </template>
             </v-tooltip>
             <v-tooltip :text="t('testing.plans.detail.viewReport')" location="top">
-              <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" icon="mdi-file-chart-outline" size="small" variant="text" color="primary" @click="showReport(item)" />
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-file-chart-outline"
+                  size="small"
+                  variant="text"
+                  color="primary"
+                  @click="showReport(item)"
+                />
               </template>
             </v-tooltip>
-            <v-tooltip v-if="item.status === 'running' || item.status === 'pending'" :text="t('testing.plans.detail.cancelExec')" location="top">
-              <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" icon="mdi-stop-circle-outline" size="small" variant="text" color="error" @click="confirmCancelExec(item)" />
+            <v-tooltip
+              v-if="item.status === 'running' || item.status === 'pending'"
+              :text="t('testing.plans.detail.cancelExec')"
+              location="top"
+            >
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  icon="mdi-stop-circle-outline"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  @click="confirmCancelExec(item)"
+                />
               </template>
             </v-tooltip>
           </div>
         </template>
-        <template v-slot:no-data>
+        <template #no-data>
           <div class="text-center py-12 text-medium-emphasis">
             <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-clock-fast</v-icon>
             <div class="text-body-2">{{ t('testing.plans.detail.noExecRecord') }}</div>
-            <v-btn color="teal" variant="tonal" class="text-none mt-3" size="small" prepend-icon="mdi-play-circle-outline" @click="confirmTriggerDialog = true">
+            <v-btn
+              color="teal"
+              variant="tonal"
+              class="text-none mt-3"
+              size="small"
+              prepend-icon="mdi-play-circle-outline"
+              @click="confirmTriggerDialog = true"
+            >
               {{ t('testing.plans.detail.startFirstBuild') }}
             </v-btn>
           </div>
@@ -223,8 +336,12 @@
         <v-card-text class="pa-4">{{ $t('testing.plans.triggerConfirm') }}</v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" @click="confirmTriggerDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="teal" variant="flat" @click="triggerBuild">{{ $t('common.confirm') }}</v-btn>
+          <v-btn variant="text" @click="confirmTriggerDialog = false">{{
+            $t('common.cancel')
+          }}</v-btn>
+          <v-btn color="teal" variant="flat" @click="triggerBuild">{{
+            $t('common.confirm')
+          }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -233,13 +350,19 @@
     <v-dialog v-model="confirmCancelDialog" max-width="400">
       <v-card class="rounded-xl">
         <v-card-title class="bg-error text-white pa-4">
-          <span class="text-subtitle-1 font-weight-bold">{{ $t('testing.executions.cancel') }}</span>
+          <span class="text-subtitle-1 font-weight-bold">{{
+            $t('testing.executions.cancel')
+          }}</span>
         </v-card-title>
         <v-card-text class="pa-4">{{ $t('testing.executions.cancelConfirm') }}</v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" @click="confirmCancelDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="error" variant="flat" @click="doCancelExec">{{ $t('common.confirm') }}</v-btn>
+          <v-btn variant="text" @click="confirmCancelDialog = false">{{
+            $t('common.cancel')
+          }}</v-btn>
+          <v-btn color="error" variant="flat" @click="doCancelExec">{{
+            $t('common.confirm')
+          }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -247,19 +370,47 @@
     <!-- Log Dialog -->
     <v-dialog v-model="logDialog" max-width="900" scrollable>
       <v-card class="rounded-xl">
-        <v-card-title class="pa-4 bg-grey-darken-3 text-white d-flex align-center justify-space-between">
+        <v-card-title
+          class="pa-4 bg-grey-darken-3 text-white d-flex align-center justify-space-between"
+        >
           <span class="text-subtitle-1 font-weight-bold">
-            <v-icon start>mdi-console</v-icon>{{ $t('testing.executions.logs') }} #{{ selectedExec?.id }}
-            <v-chip v-if="isLogStreaming" size="x-small" color="green" class="ml-2" variant="flat">LIVE</v-chip>
+            <v-icon start>mdi-console</v-icon>{{ $t('testing.executions.logs') }} #{{
+              selectedExec?.id
+            }}
+            <v-chip v-if="isLogStreaming" size="x-small" color="green" class="ml-2" variant="flat"
+              >LIVE</v-chip
+            >
           </span>
           <div>
-            <v-btn icon="mdi-download" variant="text" color="white" size="small" @click="downloadLog" class="mr-1" />
-            <v-btn icon="mdi-refresh" variant="text" color="white" size="small" @click="refreshLog" class="mr-1" />
-            <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="closeLogDialog" />
+            <v-btn
+              icon="mdi-download"
+              variant="text"
+              color="white"
+              size="small"
+              class="mr-1"
+              @click="downloadLog"
+            />
+            <v-btn
+              icon="mdi-refresh"
+              variant="text"
+              color="white"
+              size="small"
+              class="mr-1"
+              @click="refreshLog"
+            />
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              color="white"
+              size="small"
+              @click="closeLogDialog"
+            />
           </div>
         </v-card-title>
-        <v-card-text class="pa-0" style="max-height: 60vh;">
-          <pre ref="logViewerRef" class="log-viewer pa-4">{{ logContent || $t('testing.executions.noLogs') }}</pre>
+        <v-card-text class="pa-0" style="max-height: 60vh">
+          <pre ref="logViewerRef" class="log-viewer pa-4">{{
+            logContent || $t('testing.executions.noLogs')
+          }}</pre>
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -271,36 +422,81 @@
           <span class="text-subtitle-1 font-weight-bold">
             <v-icon start>mdi-file-chart-outline</v-icon>{{ $t('testing.executions.report') }}
           </span>
-          <v-btn icon="mdi-close" variant="text" color="white" size="small" @click="reportDialog = false" />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            color="white"
+            size="small"
+            @click="reportDialog = false"
+          />
         </v-card-title>
-        <v-card-text class="pa-4" style="max-height: 70vh;">
+        <v-card-text class="pa-4" style="max-height: 70vh">
           <div v-if="reportData.report_type === 'allure' && reportData.report_url">
-            <iframe :src="reportData.report_url" style="width: 100%; height: 60vh; border: none; border-radius: 8px;" />
+            <iframe
+              :src="reportData.report_url"
+              style="width: 100%; height: 60vh; border: none; border-radius: 8px"
+            />
           </div>
           <div v-else-if="reportData.report_type === 'junit' && reportData.report_data">
             <v-row class="mb-4">
               <v-col cols="3">
-                <v-card color="blue" variant="tonal"><v-card-text class="text-center"><div class="text-h5">{{ reportData.report_data.tests || 0 }}</div><div class="text-caption">Total</div></v-card-text></v-card>
+                <v-card color="blue" variant="tonal"
+                  ><v-card-text class="text-center"
+                    ><div class="text-h5">{{ reportData.report_data.tests || 0 }}</div>
+                    <div class="text-caption">Total</div></v-card-text
+                  ></v-card
+                >
               </v-col>
               <v-col cols="3">
-                <v-card color="green" variant="tonal"><v-card-text class="text-center"><div class="text-h5">{{ (reportData.report_data.tests || 0) - (reportData.report_data.failures || 0) - (reportData.report_data.errors || 0) }}</div><div class="text-caption">Passed</div></v-card-text></v-card>
+                <v-card color="green" variant="tonal"
+                  ><v-card-text class="text-center"
+                    ><div class="text-h5">
+                      {{
+                        (reportData.report_data.tests || 0) -
+                        (reportData.report_data.failures || 0) -
+                        (reportData.report_data.errors || 0)
+                      }}
+                    </div>
+                    <div class="text-caption">Passed</div></v-card-text
+                  ></v-card
+                >
               </v-col>
               <v-col cols="3">
-                <v-card color="red" variant="tonal"><v-card-text class="text-center"><div class="text-h5">{{ reportData.report_data.failures || 0 }}</div><div class="text-caption">Failures</div></v-card-text></v-card>
+                <v-card color="red" variant="tonal"
+                  ><v-card-text class="text-center"
+                    ><div class="text-h5">{{ reportData.report_data.failures || 0 }}</div>
+                    <div class="text-caption">Failures</div></v-card-text
+                  ></v-card
+                >
               </v-col>
               <v-col cols="3">
-                <v-card color="orange" variant="tonal"><v-card-text class="text-center"><div class="text-h5">{{ reportData.report_data.errors || 0 }}</div><div class="text-caption">Errors</div></v-card-text></v-card>
+                <v-card color="orange" variant="tonal"
+                  ><v-card-text class="text-center"
+                    ><div class="text-h5">{{ reportData.report_data.errors || 0 }}</div>
+                    <div class="text-caption">Errors</div></v-card-text
+                  ></v-card
+                >
               </v-col>
             </v-row>
-            <v-data-table v-if="reportData.report_data.suites" :headers="junitHeaders" :items="flattenSuites(reportData.report_data)" density="compact">
-              <template v-slot:item.status="{ item }">
+            <v-data-table
+              v-if="reportData.report_data.suites"
+              :headers="junitHeaders"
+              :items="flattenSuites(reportData.report_data)"
+              density="compact"
+            >
+              <template #[`item.status`]="{ item }">
                 <v-icon :color="item.status === 'passed' ? 'green' : 'red'" size="small">
                   {{ item.status === 'passed' ? 'mdi-check-circle' : 'mdi-alert-circle' }}
                 </v-icon>
               </template>
             </v-data-table>
           </div>
-          <v-empty-state v-else icon="mdi-file-chart-off-outline" :title="$t('testing.executions.noReport')" class="py-10" />
+          <v-empty-state
+            v-else
+            icon="mdi-file-chart-off-outline"
+            :title="$t('testing.executions.noReport')"
+            class="py-10"
+          />
         </v-card-text>
       </v-card>
     </v-dialog>
@@ -313,10 +509,15 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useSnackbarStore } from '@/store/snackbar'
 import {
-  getBuildPlan, triggerBuildPlan, getBuildPlanExecutions,
-  getBuildExecutionLogs, downloadBuildExecutionLog,
-  getBuildExecutionReport, cancelBuildExecution,
-  refreshBuildPlanStatus, getProgressiveLog,
+  getBuildPlan,
+  triggerBuildPlan,
+  getBuildPlanExecutions,
+  getBuildExecutionLogs,
+  downloadBuildExecutionLog,
+  getBuildExecutionReport,
+  cancelBuildExecution,
+  refreshBuildPlanStatus,
+  getProgressiveLog,
 } from '@/api/testing'
 
 const { t } = useI18n()
@@ -347,7 +548,7 @@ const reportData = ref<any>({})
 
 const planId = computed(() => Number(route.params.id))
 
-const latestExec = computed(() => executions.value.length ? executions.value[0] : null)
+const latestExec = computed(() => (executions.value.length ? executions.value[0] : null))
 
 const hasEnvVars = computed(() => {
   const ev = plan.value.environment_variables
@@ -373,7 +574,9 @@ const junitHeaders = [
 ]
 
 const getExecStatusColor = (s: string) =>
-  ({ pending: 'grey', running: 'info', success: 'success', failed: 'error', cancelled: 'warning' }[s] || 'grey')
+  ({ pending: 'grey', running: 'info', success: 'success', failed: 'error', cancelled: 'warning' })[
+    s
+  ] || 'grey'
 
 const formatDate = (d: string) => {
   if (!d) return '-'
@@ -384,7 +587,9 @@ const loadPlan = async () => {
   loading.value = true
   try {
     plan.value = await getBuildPlan(planId.value)
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+  }
   loading.value = false
 }
 
@@ -393,7 +598,9 @@ const loadExecutions = async () => {
   try {
     const res = await getBuildPlanExecutions(planId.value, { no_page: true })
     executions.value = Array.isArray(res) ? res : []
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+  }
   loadingExec.value = false
 }
 
@@ -404,7 +611,9 @@ const refreshStatus = async () => {
     await loadPlan()
     await loadExecutions()
     snackbar.notify(t('common.success'), 'success')
-  } catch (e: any) { snackbar.notify(e?.message || t('common.error'), 'error') }
+  } catch (e: any) {
+    snackbar.notify(e?.message || t('common.error'), 'error')
+  }
   refreshing.value = false
 }
 
@@ -415,11 +624,15 @@ const triggerBuild = async () => {
     await triggerBuildPlan(planId.value)
     snackbar.notify(t('common.success'), 'success')
     loadExecutions()
-  } catch (e: any) { snackbar.notify(e?.message || t('common.error'), 'error') }
+  } catch (e: any) {
+    snackbar.notify(e?.message || t('common.error'), 'error')
+  }
   triggering.value = false
 }
 
-const showExecDetail = (item: any) => { showLogs(item) }
+const showExecDetail = (item: any) => {
+  showLogs(item)
+}
 
 const showLogs = async (item: any) => {
   selectedExec.value = item
@@ -433,28 +646,37 @@ const showLogs = async (item: any) => {
       await fetchProgressiveLog()
       startLogPolling()
     } else {
-      const res = await getBuildExecutionLogs(item.id) as any
+      const res = (await getBuildExecutionLogs(item.id)) as any
       logContent.value = res.log_text || t('testing.executions.noLogs')
     }
-  } catch (e) { logContent.value = 'Error loading logs' }
+  } catch (e) {
+    logContent.value = 'Error loading logs'
+  }
 }
 
 const fetchProgressiveLog = async () => {
   if (!selectedExec.value) return
   try {
-    const res = await getProgressiveLog(selectedExec.value.id, logStart) as any
+    const res = (await getProgressiveLog(selectedExec.value.id, logStart)) as any
     if (res.text) {
-      if (logStart === 0) { logContent.value = res.text }
-      else { logContent.value += res.text }
+      if (logStart === 0) {
+        logContent.value = res.text
+      } else {
+        logContent.value += res.text
+      }
       logStart = res.offset || logContent.value.length
       await nextTick()
-      if (logViewerRef.value) { logViewerRef.value.scrollTop = logViewerRef.value.scrollHeight }
+      if (logViewerRef.value) {
+        logViewerRef.value.scrollTop = logViewerRef.value.scrollHeight
+      }
     }
     if (!res.more) {
       isLogStreaming.value = false
       stopLogPolling()
     }
-  } catch (e) { /* ignore polling errors */ }
+  } catch (e) {
+    /* ignore polling errors */
+  }
 }
 
 const startLogPolling = () => {
@@ -463,7 +685,10 @@ const startLogPolling = () => {
 }
 
 const stopLogPolling = () => {
-  if (logPollTimer) { clearInterval(logPollTimer); logPollTimer = null }
+  if (logPollTimer) {
+    clearInterval(logPollTimer)
+    logPollTimer = null
+  }
 }
 
 const closeLogDialog = () => {
@@ -475,25 +700,30 @@ const refreshLog = async () => {
   if (!selectedExec.value) return
   logStart = 0
   try {
-    if (isLogStreaming.value) { await fetchProgressiveLog() }
-    else {
-      const res = await getBuildExecutionLogs(selectedExec.value.id) as any
+    if (isLogStreaming.value) {
+      await fetchProgressiveLog()
+    } else {
+      const res = (await getBuildExecutionLogs(selectedExec.value.id)) as any
       logContent.value = res.log_text || t('testing.executions.noLogs')
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    /* ignore */
+  }
 }
 
 const downloadLog = async () => {
   if (!selectedExec.value) return
   try {
-    const res = await downloadBuildExecutionLog(selectedExec.value.id) as BlobPart
-    const url = window.URL.createObjectURL(new Blob([res]))
+    const res = (await downloadBuildExecutionLog(selectedExec.value.id)) as Blob
+    const url = window.URL.createObjectURL(res)
     const a = document.createElement('a')
     a.href = url
     a.download = `build_${selectedExec.value.id}_log.txt`
     a.click()
     window.URL.revokeObjectURL(url)
-  } catch (e: any) { snackbar.notify(t('testing.plans.detail.downloadFailed'), 'error') }
+  } catch (e: any) {
+    snackbar.notify(t('testing.plans.detail.downloadFailed'), 'error')
+  }
 }
 
 const showReport = async (item: any) => {
@@ -501,7 +731,9 @@ const showReport = async (item: any) => {
   reportDialog.value = true
   try {
     reportData.value = await getBuildExecutionReport(item.id)
-  } catch (e) { reportData.value = {} }
+  } catch (e) {
+    reportData.value = {}
+  }
 }
 
 const confirmCancelExec = (item: any) => {
@@ -516,13 +748,15 @@ const doCancelExec = async () => {
     await cancelBuildExecution(cancelTarget.value.id)
     snackbar.notify(t('common.success'), 'success')
     loadExecutions()
-  } catch (e: any) { snackbar.notify(e?.message || t('common.error'), 'error') }
+  } catch (e: any) {
+    snackbar.notify(e?.message || t('common.error'), 'error')
+  }
 }
 
 const flattenSuites = (data: any) => {
   const results: any[] = []
-  for (const suite of (data.suites || [])) {
-    for (const tc of (suite.cases || [])) {
+  for (const suite of data.suites || []) {
+    for (const tc of suite.cases || []) {
       results.push({
         suite: suite.name,
         name: tc.name || tc.className,

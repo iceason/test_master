@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
+from django.views.static import serve
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -14,4 +16,9 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Allow Allure HTML under /media to render inside the Vue dialog iframe (no X-Frame-Options / COOP issues).
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        view=xframe_options_exempt(serve),
+        document_root=settings.MEDIA_ROOT,
+    )

@@ -25,6 +25,11 @@ export default defineConfig({
         target: process.env.VITE_API_BASE || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
+      // Allure HTML under /media must hit Django; path-only report URLs use same origin as the SPA.
+      '/media': {
+        target: process.env.VITE_API_BASE || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
     },
   },
 })
