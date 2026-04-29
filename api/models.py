@@ -388,10 +388,6 @@ class BuildPlan(models.Model):
 
     # 报告配置
     report_enabled = models.BooleanField(default=False, verbose_name="启用报告上传")
-    report_results_dir = models.CharField(
-        max_length=255, blank=True, default='allure-results', verbose_name="报告目录",
-        help_text="构建机中待上传报告目录，默认 allure-results",
-    )
     report_command = models.TextField(blank=True, verbose_name="报告生成命令")
 
     # 定时执行
@@ -578,6 +574,9 @@ class EmailTemplate(models.Model):
         ('triggered_by', '触发人'),
         ('duration', '执行耗时'),
         ('jenkins_url', 'Jenkins 构建链接'),
+        ('report_type', '报告类型'),
+        ('allure_report_url', 'Allure 报告绝对链接'),
+        ('allure_report_block', 'Allure 报告 Markdown 块'),
         ('timestamp', '执行时间'),
     )
 
@@ -678,9 +677,6 @@ class DingTalkTemplate(models.Model):
         ('duration', '执行耗时'),
         ('jenkins_url', 'Jenkins 构建链接'),
         ('timestamp', '执行时间'),
-        ('report_type', '报告类型(none/junit/allure 等)'),
-        ('allure_report_url', 'Allure 报告绝对链接(无报告为空)'),
-        ('allure_report_block', 'Allure 报告 Markdown 块(含小标题与链接，无报告为空)'),
     )
 
     name = models.CharField(max_length=100, unique=True, verbose_name="模板名称")
@@ -702,7 +698,7 @@ class DingTalkTemplate(models.Model):
             "- 触发人：{{triggered_by}}\n\n"
             "### 构建详情\n"
             "- Jenkins 链接：{{jenkins_url}}\n\n"
-            "{{allure_report_block}}"
+            "{{allure_report_block}}\n"
             "---\n"
             "说明：\n"
             "- SUCCESS：所有步骤执行通过\n"

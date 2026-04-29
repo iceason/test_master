@@ -25,27 +25,12 @@ DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv('ALLOWED_HOSTS', '*').split(',') if h.strip()]
 
-# Clickjacking: default DENY blocks *all* iframes including same-origin (Allure /media in SPA dialog).
-# SAMEORIGIN still forbids cross-site embedding; use CSP frame-ancestors for stricter prod rules if needed.
-X_FRAME_OPTIONS = 'SAMEORIGIN'
-
-# Django 4.2 global_settings defaults this to "same-origin"; it breaks embedding Allure /media in the SPA iframe
-# in Chromium (COOP + framed document). Not needed for our REST/static responses to omit it project-wide.
-SECURE_CROSS_ORIGIN_OPENER_POLICY = None
-
-# 前端基址（邀请链接、钉钉/邮件里的 Allure 报告链接优先用此 origin + /media/...，勿用 127.0.0.1:8000）
-# 局域网访问示例：FRONTEND_BASE_URL=http://192.168.96.227:3334
+# 注册邀请链接中的前端基址（hash 路由，末尾不要斜杠）
 FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'http://127.0.0.1:3334').rstrip('/')
-
-# Jenkins / 构建机上传报告时 curl 使用的后端根 URL（供流水线环境变量 BACKEND_BASE_URL）
-BACKEND_BASE_URL = os.getenv('BACKEND_BASE_URL', '').rstrip('/')
-
-# 浏览器打开 Allure 报告（iframe/链接）时的后端根 URL。不设则 API 只返回路径 ``/media/...``（与前端同源，经 Vite/nginx 反代）。
-# 勿复用 BACKEND_BASE_URL：该地址常是 Jenkins 可访问的内网 IP，本机浏览器往往连不上。
+# Jenkins 可访问的后端基址（用于回调/上传）
+BACKEND_BASE_URL = os.getenv('BACKEND_BASE_URL', 'http://127.0.0.1:8000').rstrip('/')
+# 浏览器可访问的报告基址（为空时自动回退 FRONTEND_BASE_URL）
 REPORT_PUBLIC_BASE_URL = os.getenv('REPORT_PUBLIC_BASE_URL', '').rstrip('/')
-
-# 启用「报告上传」时，钉钉/邮件在构建结束瞬间发送会早于 Jenkins post 里 curl 上传 Allure，导致 {{allure_report_url}} 为空。
-# 此时改为异步等待最多 NOTIFICATION_WAIT_FOR_REPORT_SECONDS；超时后仍发送（无链接）。
 NOTIFICATION_WAIT_FOR_REPORT_SECONDS = int(os.getenv('NOTIFICATION_WAIT_FOR_REPORT_SECONDS', '240'))
 NOTIFICATION_REPORT_POLL_SECONDS = int(os.getenv('NOTIFICATION_REPORT_POLL_SECONDS', '5'))
 
@@ -58,8 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    # staticfiles 必须在 api 之后注册，否则 staticfiles 自带的 runserver 会覆盖
-    # api.management.commands.runserver（开发时默认 0.0.0.0，且保留静态文件服务）
+
     # Third party
     'rest_framework',
     'rest_framework_simplejwt',
@@ -67,8 +51,10 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_celery_beat',
+
     # Local
     'api',
+    # Keep staticfiles after api so custom api.management.commands.runserver wins
     'django.contrib.staticfiles',
 ]
 
@@ -82,6 +68,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 ROOT_URLCONF = 'TestCaseGenerator.urls'
 

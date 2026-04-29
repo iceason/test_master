@@ -74,9 +74,21 @@ class JenkinsClient:
         Returns queue_id (int).
         """
         params = parameters if parameters else None
-        queue_id = self.server.build_job(job_name, parameters=params)
-        logger.info("Triggered Jenkins job %s, queue_id=%s", job_name, queue_id)
-        return queue_id
+        try:
+            queue_id = self.server.build_job(job_name, parameters=params)
+            logger.info("Triggered Jenkins job %s, queue_id=%s", job_name, queue_id)
+            return queue_id
+        except Exception as e:
+            # Some Jenkins jobs are parameterized and reject /build with HTTP 400.
+            # Retry with empty parameters to force /buildWithParameters.
+            if params is None and '400' in str(e):
+                queue_id = self.server.build_job(job_name, parameters={})
+                logger.info(
+                    "Triggered Jenkins job %s with empty parameters retry, queue_id=%s",
+                    job_name, queue_id
+                )
+                return queue_id
+            raise
 
     def get_build_number_from_queue(self, queue_id, timeout=120, poll_interval=3):
         """
@@ -184,140 +196,6 @@ def create_jenkins_client(build_plan):
 import xml.sax.saxutils as saxutils
 import re
 
-REPORT_UPLOAD_MARK_START = '// [testmaster:auto-report-upload:start]'
-REPORT_UPLOAD_MARK_END = '// [testmaster:auto-report-upload:end]'
-_REPORT_UPLOAD_BLOCK_RE = re.compile(
-    r'^[ \t]*// \[testmaster:auto-report-upload:start\][\s\S]*?^[ \t]*// \[testmaster:auto-report-upload:end\]\s*\n?',
-    re.MULTILINE,
-)
-
-
-def _resolve_backend_base_url():
-    try:
-        from django.conf import settings
-        url = getattr(settings, 'BACKEND_BASE_URL', '') or ''
-        if url.strip():
-            return url.strip().rstrip('/')
-    except Exception:
-        pass
-    return 'http://127.0.0.1:8000'
-
-
-def _find_matching_brace_naive(text, open_idx):
-    """Return index of `}` matching `{` at open_idx, or None. Ignores strings (best-effort)."""
-    if open_idx >= len(text) or text[open_idx] != '{':
-        return None
-    depth = 0
-    i = open_idx
-    n = len(text)
-    while i < n:
-        c = text[i]
-        if c == "'":
-            i += 1
-            while i < n:
-                if text[i] == '\\':
-                    i += 2
-                    continue
-                if text[i] == "'":
-                    i += 1
-                    break
-                i += 1
-            continue
-        if i <= n - 3 and text[i:i + 3] == "'''":
-            i += 3
-            while i < n - 2:
-                if text[i:i + 3] == "'''":
-                    i += 3
-                    break
-                i += 1
-            continue
-        if c == '{':
-            depth += 1
-        elif c == '}':
-            depth -= 1
-            if depth == 0:
-                return i
-        i += 1
-    return None
-
-
-def strip_report_upload_markers(text):
-    """Remove a previously injected TestMaster report upload block."""
-    if not text:
-        return ''
-    return _REPORT_UPLOAD_BLOCK_RE.sub('', text)
-
-
-def _build_report_upload_marked_inner(report_command, os_type='linux'):
-    """Marked catchError + sh/bat body (inside post / always)."""
-    inner_sh = _format_sh(report_command.strip(), os_type)
-    return (
-        f"            {REPORT_UPLOAD_MARK_START}\n"
-        "            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {\n"
-        f"{_indent(inner_sh, 16)}\n"
-        "            }\n"
-        f"            {REPORT_UPLOAD_MARK_END}"
-    )
-
-
-def finalize_jenkinsfile_for_plan(jenkinsfile_text, report_enabled, report_command, os_type='linux'):
-    """
-    Remove any prior auto block, then inject report upload into declarative `post { always { ... } }`
-    when report_enabled and report_command are set. Idempotent for sync/save.
-    """
-    text = strip_report_upload_markers(jenkinsfile_text or '')
-    cmd = (report_command or '').strip()
-    if not report_enabled or not cmd:
-        return text.rstrip() + '\n' if text.strip() else ''
-
-    marked_inner = _build_report_upload_marked_inner(cmd, os_type)
-
-    m = re.search(r'\bpipeline\s*\{', text)
-    if not m:
-        return text.rstrip() + '\n'
-
-    pipeline_brace_open = m.end() - 1
-    pipeline_brace_close = _find_matching_brace_naive(text, pipeline_brace_open)
-    if pipeline_brace_close is None:
-        return text.rstrip() + '\n'
-
-    inner = text[pipeline_brace_open + 1:pipeline_brace_close]
-
-    post_m = re.search(r'\bpost\s*\{', inner)
-    if not post_m:
-        abs_post_insert = pipeline_brace_close
-        chunk = (
-            "\n    post {\n"
-            "        always {\n"
-            f"{marked_inner}\n"
-            "        }\n"
-            "    }\n"
-        )
-        return text[:abs_post_insert] + chunk + text[abs_post_insert:]
-
-    post_open_rel = post_m.end() - 1
-    post_open_abs = pipeline_brace_open + 1 + post_open_rel
-    post_close_abs = _find_matching_brace_naive(text, post_open_abs)
-    if post_close_abs is None:
-        return text.rstrip() + '\n'
-
-    post_inner = text[post_open_abs + 1:post_close_abs]
-    always_m = re.search(r'\balways\s*\{', post_inner)
-    if always_m:
-        always_open_rel = always_m.end() - 1
-        always_open_abs = post_open_abs + 1 + always_open_rel
-        insert_after = always_open_abs + 1
-        chunk = '\n' + marked_inner
-        return text[:insert_after] + chunk + text[insert_after:]
-
-    insert_after = post_open_abs + 1
-    chunk = (
-        "\n        always {\n"
-        f"{marked_inner}\n"
-        "        }\n"
-    )
-    return text[:insert_after] + chunk + text[insert_after:]
-
 
 def _escape_groovy(text):
     """Escape for Groovy single-quoted string."""
@@ -398,7 +276,7 @@ def _build_stage_block(step, os_type='linux'):
 def build_pipeline_script(
     steps, os_type='linux', node_label=None,
     git_repo_url='', git_branch='main', workspace_cleanup=True,
-    report_enabled=False, report_results_dir='allure-results', report_command='',
+    report_enabled=False, report_command='',
     webhook_url='', build_plan_id=None,
     environment_variables=None,
     git_credential_id='',
@@ -412,34 +290,17 @@ def build_pipeline_script(
     else:
         agent_block = "    agent any"
 
-    env_values = {}
+    env_block = ""
     if environment_variables:
+        env_lines = []
         for ev in environment_variables:
             key = re.sub(r'[^A-Za-z0-9_]', '_', ev.get('key', '').strip())
             value = ev.get('value', '')
             if not key:
                 continue
-            env_values[key] = str(value)
-    env_values.setdefault('BACKEND_BASE_URL', _resolve_backend_base_url())
-    if build_plan_id is not None:
-        env_values.setdefault('BUILD_PLAN_ID', str(build_plan_id))
-    env_values.setdefault('EXECUTION_ID', '__PARAM_EXECUTION_ID__')
-
-    env_block = ""
-    if env_values:
-        env_lines = []
-        for key, value in env_values.items():
-            if value == '__PARAM_EXECUTION_ID__':
-                env_lines.append(f'        {key} = "${{params.EXECUTION_ID}}"')
-            else:
-                env_lines.append(f"        {key} = '{_escape_groovy(value)}'")
-        env_block = "    environment {\n" + "\n".join(env_lines) + "\n    }"
-
-    parameters_block = (
-        "    parameters {\n"
-        "        string(name: 'EXECUTION_ID', defaultValue: '', description: 'BuildExecution ID from TestMaster')\n"
-        "    }"
-    )
+            env_lines.append(f"        {key} = '{_escape_groovy(value)}'")
+        if env_lines:
+            env_block = "    environment {\n" + "\n".join(env_lines) + "\n    }"
 
     stage_blocks = []
 
@@ -479,21 +340,19 @@ def build_pipeline_script(
         for step in steps:
             stage_blocks.append(_build_stage_block(step, os_type))
 
-    report_post_lines = []
+    post_block = ""
     if report_enabled and report_command:
-        marked_inner = _build_report_upload_marked_inner(report_command.strip(), os_type)
-        report_post_lines = [
-            '    post {',
-            '        always {',
-            marked_inner,
-            '        }',
-            '    }',
-        ]
+        report_sh = _format_sh(report_command, os_type)
+        post_block = (
+            "    post {\n"
+            "        always {\n"
+            f"{_indent(report_sh, 12)}\n"
+            "        }\n"
+            "    }"
+        )
 
     parts = ['pipeline {']
     parts.append(agent_block)
-    parts.append('')
-    parts.append(parameters_block)
     if env_block:
         parts.append('')
         parts.append(env_block)
@@ -504,9 +363,9 @@ def build_pipeline_script(
         if i < len(stage_blocks) - 1:
             parts.append('')
     parts.append('    }')
-    if report_post_lines:
+    if post_block:
         parts.append('')
-        parts.extend(report_post_lines)
+        parts.append(post_block)
     parts.append('}')
     return '\n'.join(parts) + '\n'
 
@@ -514,7 +373,7 @@ def build_pipeline_script(
 def build_pipeline_job_xml(
     steps, os_type='linux', node_label=None, description='',
     git_repo_url='', git_branch='main', workspace_cleanup=True,
-    report_enabled=False, report_results_dir='allure-results', report_command='',
+    report_enabled=False, report_command='',
     webhook_url='', build_plan_id=None,
     environment_variables=None,
     raw_jenkinsfile='',
@@ -526,44 +385,25 @@ def build_pipeline_job_xml(
     """
     escaped_desc = saxutils.escape(description)
     if raw_jenkinsfile:
-        pipeline_script = finalize_jenkinsfile_for_plan(
-            raw_jenkinsfile,
-            report_enabled=report_enabled,
-            report_command=report_command or '',
-            os_type=os_type,
-        )
+        pipeline_script = raw_jenkinsfile
     else:
         pipeline_script = build_pipeline_script(
             steps=steps, os_type=os_type, node_label=node_label,
             git_repo_url=git_repo_url, git_branch=git_branch,
             workspace_cleanup=workspace_cleanup,
-            report_enabled=report_enabled, report_results_dir=report_results_dir, report_command=report_command,
+            report_enabled=report_enabled, report_command=report_command,
             webhook_url=webhook_url, build_plan_id=build_plan_id,
             environment_variables=environment_variables,
             git_credential_id=git_credential_id,
         )
     escaped_script = saxutils.escape(pipeline_script)
-    param_props_xml = (
-        '  <properties>\n'
-        '    <hudson.model.ParametersDefinitionProperty>\n'
-        '      <parameterDefinitions>\n'
-        '        <hudson.model.StringParameterDefinition>\n'
-        '          <name>EXECUTION_ID</name>\n'
-        '          <description>BuildExecution ID from TestMaster</description>\n'
-        '          <defaultValue></defaultValue>\n'
-        '          <trim>false</trim>\n'
-        '        </hudson.model.StringParameterDefinition>\n'
-        '      </parameterDefinitions>\n'
-        '    </hudson.model.ParametersDefinitionProperty>\n'
-        '  </properties>\n'
-    )
 
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<flow-definition plugin="workflow-job">\n'
         f'  <description>{escaped_desc}</description>\n'
         '  <keepDependencies>false</keepDependencies>\n'
-        f'{param_props_xml}'
+        '  <properties/>\n'
         '  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">\n'
         f'    <script>{escaped_script}</script>\n'
         '    <sandbox>true</sandbox>\n'
@@ -634,7 +474,6 @@ def sync_jenkins_job(plan):
         git_branch=getattr(plan, 'git_branch', 'main') or 'main',
         workspace_cleanup=getattr(plan, 'workspace_cleanup', True),
         report_enabled=getattr(plan, 'report_enabled', False),
-        report_results_dir=getattr(plan, 'report_results_dir', 'allure-results') or 'allure-results',
         report_command=getattr(plan, 'report_command', '') or '',
         webhook_url=webhook_base_url,
         build_plan_id=plan.id,

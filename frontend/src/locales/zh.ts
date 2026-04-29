@@ -79,7 +79,8 @@ export default {
     reasonInvalid: '注册链接无效',
     inviteMenu: '用户注册邀请',
     inviteDialogTitle: '用户注册邀请',
-    inviteDialogHint: '将以下链接发送给待注册用户。每个链接仅可注册一个账号，注册成功后链接立即失效；若 24 小时内未完成注册，链接将自动失效。',
+    inviteDialogHint:
+      '将以下链接发送给待注册用户。每个链接仅可注册一个账号，注册成功后链接立即失效；若 24 小时内未完成注册，链接将自动失效。',
     inviteLink: '邀请链接',
     inviteExpiresAt: '有效期至：{time}',
     copyLink: '复制链接',
@@ -106,32 +107,33 @@ export default {
   intro: {
     welcome: '欢迎回来，{name}',
     title: 'Test Master — 一站式接口测试平台',
-    subtitle: '从项目创建、接口管理、AI 用例生成，到自动化执行与持续构建，为您提供完整的接口质量保障能力。',
+    subtitle:
+      '从项目创建、接口管理、AI 用例生成，到自动化执行与持续构建，为您提供完整的接口质量保障能力。',
     features: {
       projectManagement: {
         title: '项目管理',
-        desc: '创建项目空间并管理团队成员与权限，让接口和用例按项目维度组织，协作井然有序。'
+        desc: '创建项目空间并管理团队成员与权限，让接口和用例按项目维度组织，协作井然有序。',
       },
       apiManagement: {
         title: '接口管理',
-        desc: '统一管理 API 定义，支持手动录入和 OpenAPI / Swagger Schema 一键导入，快速建立接口资产库。'
+        desc: '统一管理 API 定义，支持手动录入和 OpenAPI / Swagger Schema 一键导入，快速建立接口资产库。',
       },
       aiGeneration: {
         title: 'AI 智能生成',
-        desc: '基于接口 Schema，利用 AI 算法自动生成测试用例，覆盖正向、边界及异常场景，大幅减少人工编写。'
+        desc: '基于接口 Schema，利用 AI 算法自动生成测试用例，覆盖正向、边界及异常场景，大幅减少人工编写。',
       },
       interfaceTesting: {
         title: '接口测试',
-        desc: '在线管理和编辑测试用例，支持分类筛选与批量操作，查看执行记录追踪测试进度。'
+        desc: '在线管理和编辑测试用例，支持分类筛选与批量操作，查看执行记录追踪测试进度。',
       },
       continuousBuild: {
         title: '持续构建',
-        desc: '对接 Jenkins 等 CI 执行器，配置构建计划实现自动化回归测试，保障每次发版的接口质量。'
+        desc: '对接 Jenkins 等 CI 执行器，配置构建计划实现自动化回归测试，保障每次发版的接口质量。',
       },
       export: {
         title: '灵活导出',
-        desc: '一键导出测试用例为 Excel、XMind、YAML 等多种格式，方便离线评审或与其他系统集成。'
-      }
+        desc: '一键导出测试用例为 Excel、XMind、YAML 等多种格式，方便离线评审或与其他系统集成。',
+      },
     },
     guide: {
       title: '快速上手',
@@ -144,8 +146,8 @@ export default {
       step4: '执行与验证',
       step4Desc: '进入“接口测试”查看和编辑用例，配置构建计划实现自动化持续回归。',
       step5: '导出与交付',
-      step5Desc: '将测试用例导出为 Excel / XMind / YAML，用于评审归档或集成到 CI/CD 流水线。'
-    }
+      step5Desc: '将测试用例导出为 Excel / XMind / YAML，用于评审归档或集成到 CI/CD 流水线。',
+    },
   },
   interface: {
     title: '接口管理',
@@ -286,9 +288,11 @@ export default {
         gitRepoUrl: 'Git 仓库地址',
         gitBranch: 'Git 分支',
         gitCredentialId: 'Jenkins 凭证 ID',
-        gitCredentialIdHint: '在 Jenkins 中配置的 Credentials ID（如 github-user），用于拉取代码认证',
+        gitCredentialIdHint:
+          '在 Jenkins 中配置的 Credentials ID（如 github-user），用于拉取代码认证',
         workspaceCleanup: '构建前清理工作空间',
         reportEnabled: '启用报告上传',
+        reportResultsDir: '报告目录',
         reportCommand: '报告生成命令',
         repeatRunTimes: '重复执行次数',
         repeatRunTimesHint: '点击一次立即构建时自动执行的轮次（1~20）',
@@ -346,7 +350,10 @@ export default {
         emailHint: '输入邮箱地址后按 Enter 添加，支持添加多人',
         emailInvalid: '以下邮箱格式不正确：{emails}',
       },
-      jenkinsAutoCreate: '保存后将自动在 Jenkins 上创建与计划同名的 Pipeline Job，Jenkinsfile pipeline 将同步推送',
+      jenkinsAutoCreate:
+        '保存后将自动在 Jenkins 上创建与计划同名的 Pipeline Job，Jenkinsfile pipeline 将同步推送',
+      reportUploadStep: '报告上传',
+      reportUploadHint: '构建完成后自动压缩并上传 Allure 报告',
       fillRequired: '请填写必填字段',
       formValidationError: '表单验证异常，请检查必填项',
       addVariable: '添加变量',
@@ -379,6 +386,7 @@ export default {
       cancelConfirm: '确定要取消此构建吗？',
       noLogs: '暂无日志',
       noReport: '暂无报告',
+      popupBlocked: '浏览器拦截了弹窗，请在地址栏允许本站弹出窗口后重试',
       status: {
         pending: '等待中',
         running: '执行中',
@@ -422,7 +430,8 @@ export default {
       parseFailed: '解析失败，已保留原始文本',
       switchConfirm: '切换编辑器模式将尝试转换内容，可能会丢失部分格式信息，确定切换吗？',
       switchTitle: '切换编辑器',
-      switchUnsavedWarn: '文本编辑器中存在未保存的修改，切换到图形编辑器后无法解析的内容可能丢失，是否继续？',
+      switchUnsavedWarn:
+        '文本编辑器中存在未保存的修改，切换到图形编辑器后无法解析的内容可能丢失，是否继续？',
     },
   },
   generation: {
@@ -504,7 +513,7 @@ export default {
       security_nosql_injection: 'NoSQL注入',
       security_jwt: 'JWT / Token 安全（过期）',
       security_rate_limit: '速率限制（过快点击）',
-    }
+    },
   },
   executionRecords: {
     title: '执行记录',
@@ -602,7 +611,7 @@ export default {
       email: '邮箱',
       oldPassword: '旧密码',
       newPassword: '新密码',
-      confirmPassword: '确认密码'
+      confirmPassword: '确认密码',
     },
     emailInvalid: '邮箱格式不正确',
     passwordTooShort: '密码长度至少6位',
@@ -614,7 +623,7 @@ export default {
     avatarTip: '支持 JPG、PNG 格式，建议尺寸 200x200px',
     securityTip1: '定期更新密码，使用强密码组合',
     securityTip2: '不要与他人共享您的账号信息',
-    securityTip3: '如有可疑登录，请及时联系管理员'
+    securityTip3: '如有可疑登录，请及时联系管理员',
   },
   settings: {
     environments: {
@@ -706,7 +715,8 @@ export default {
     descriptionLabel: '项目描述',
     empty: '暂无项目',
     createFirst: '创建第一个项目',
-    deleteConfirm: '确定要删除项目 "{name}" 吗？删除后项目下所有目录、接口及用例将一并删除，不可恢复。',
+    deleteConfirm:
+      '确定要删除项目 "{name}" 吗？删除后项目下所有目录、接口及用例将一并删除，不可恢复。',
     createdBy: '创建者: {name}',
     memberCount: '{count} 名成员',
     members: '成员管理',

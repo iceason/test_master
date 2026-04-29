@@ -546,6 +546,31 @@ let logStart = 0
 const reportDialog = ref(false)
 const reportData = ref<any>({})
 
+function resolveReportOpenUrl(raw: string | undefined | null): string {
+  if (raw == null || typeof raw !== 'string') return ''
+  const s = raw.trim()
+  if (!s) return ''
+  let url: URL
+  try {
+    if (/^https?:\/\//i.test(s)) {
+      url = new URL(s)
+    } else if (s.startsWith('//')) {
+      url = new URL(`${window.location.protocol}${s}`)
+    } else if (s.startsWith('/')) {
+      return `${window.location.origin}${s}`
+    } else {
+      return s
+    }
+  } catch {
+    return s
+  }
+  const loc = window.location
+  if (url.hostname === loc.hostname && url.origin !== loc.origin) {
+    return `${loc.origin}${url.pathname}${url.search}${url.hash}`
+  }
+  return url.toString()
+}
+
 const planId = computed(() => Number(route.params.id))
 
 const latestExec = computed(() => (executions.value.length ? executions.value[0] : null))
@@ -727,10 +752,20 @@ const downloadLog = async () => {
 }
 
 const showReport = async (item: any) => {
-  reportData.value = {}
-  reportDialog.value = true
   try {
-    reportData.value = await getBuildExecutionReport(item.id)
+    const data = (await getBuildExecutionReport(item.id)) as any
+    if (data.report_type === 'allure' && data.report_url) {
+      const url = resolveReportOpenUrl(data.report_url)
+      if (!url) {
+        snackbar.notify(t('testing.executions.noReport'), 'warning')
+        return
+      }
+      const w = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!w) snackbar.notify(t('testing.executions.popupBlocked'), 'error')
+      return
+    }
+    reportData.value = data || {}
+    reportDialog.value = true
   } catch (e) {
     reportData.value = {}
   }

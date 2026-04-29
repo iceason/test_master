@@ -489,6 +489,15 @@
                       hide-details
                       class="mb-3"
                     />
+                    <v-text-field
+                      v-if="form.report_enabled"
+                      v-model="form.report_results_dir"
+                      :label="$t('testing.plans.fields.reportResultsDir')"
+                      variant="outlined"
+                      density="compact"
+                      class="mb-3"
+                      placeholder="allure-results"
+                    />
                     <v-textarea
                       v-if="form.report_enabled"
                       v-model="form.report_command"
@@ -537,7 +546,12 @@
             </div>
             <div class="flex-grow-1 d-flex align-center" style="overflow: auto">
               <div v-if="editorMode === 'visual'" class="w-100">
-                <PipelineEditor v-model="form.steps" />
+                <PipelineEditor
+                  v-model="form.steps"
+                  :report-enabled="form.report_enabled"
+                  :report-command-preview="form.report_command"
+                  :machine-os-type="selectedMachineOs"
+                />
               </div>
               <div v-else class="w-100 pa-4">
                 <Codemirror
@@ -593,12 +607,18 @@ import {
   getExecutorMachines,
   getDingTalkGroups,
   getDingTalkTemplates,
+  getBuildPlanJenkinsEnv,
 } from '@/api/testing'
 import { Codemirror } from 'vue-codemirror'
 import { StreamLanguage } from '@codemirror/language'
 import { groovy } from '@codemirror/legacy-modes/mode/groovy'
 import PipelineEditor from './PipelineEditor.vue'
-import { generateJenkinsfile, parseJenkinsfile } from './pipelineScript'
+import {
+  generateJenkinsfile,
+  parseJenkinsfile,
+  buildDefaultReportCommand,
+  upsertJenkinsfileEnvironment,
+} from './pipelineScript'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -628,6 +648,12 @@ const webhookType = ref('dingtalk')
 const notifyDingTalk = ref(false)
 const selectedDingTalkGroupIds = ref<number[]>([])
 const selectedDingTalkTemplateId = ref<number | null>(null)
+const backendBaseUrl = ref('')
+
+const selectedMachineOs = computed(() => {
+  const m = machines.value.find((x: any) => x.id === form.value.executor_machine)
+  return m?.os_type || 'linux'
+})
 
 const confirmDialog = ref(false)
 const confirmTitle = ref('')
@@ -644,6 +670,7 @@ const form = ref<any>({
   git_credential_id: '',
   workspace_cleanup: true,
   report_enabled: false,
+  report_results_dir: 'allure-results',
   report_command: '',
   repeat_run_times: 1,
   repeat_failure_policy: 'continue_all',
@@ -771,6 +798,7 @@ const populateForm = (data: any) => {
     git_credential_id: data.git_credential_id || '',
     workspace_cleanup: data.workspace_cleanup ?? true,
     report_enabled: data.report_enabled || false,
+    report_results_dir: data.report_results_dir || 'allure-results',
     report_command: data.report_command || '',
     repeat_run_times: data.repeat_run_times || 1,
     repeat_failure_policy: data.repeat_failure_policy || 'continue_all',
@@ -824,6 +852,7 @@ const openDialog = async (item?: any) => {
       workspace_cleanup: true,
       report_enabled: false,
       report_command: '',
+      report_results_dir: 'allure-results',
       repeat_run_times: 1,
       repeat_failure_policy: 'continue_all',
       jenkinsfile_text: '',
@@ -841,6 +870,12 @@ const openDialog = async (item?: any) => {
     textDirty.value = false
     visualDirty.value = false
     dialog.value = true
+    try {
+      const env = await getBuildPlanJenkinsEnv()
+      if (env?.backend_base_url) backendBaseUrl.value = env.backend_base_url
+    } catch (e) {
+      console.error(e)
+    }
   }
   nextTick(() => {
     suppressDirtyWatch = false
@@ -865,6 +900,22 @@ watch(
   { deep: true }
 )
 
+watch(
+  () => [form.value.report_enabled, form.value.executor_machine] as const,
+  () => {
+    if (!form.value.report_enabled) return
+    if (!(form.value.report_results_dir || '').trim()) {
+      form.value.report_results_dir = 'allure-results'
+    }
+    if ((form.value.report_command || '').trim()) return
+    form.value.report_command = buildDefaultReportCommand(
+      selectedMachineOs.value,
+      form.value.report_results_dir || 'allure-results'
+    )
+  },
+  { immediate: true }
+)
+
 watch(editorMode, async (newMode, oldMode) => {
   if (pendingEditorSwitch.value) {
     pendingEditorSwitch.value = false
@@ -875,14 +926,19 @@ watch(editorMode, async (newMode, oldMode) => {
     if (visualDirty.value || !jenkinsfileText.value) {
       const machine = machines.value.find((m) => m.id === form.value.executor_machine)
       const generated = generateJenkinsfile(form.value.steps, {
+        osType: selectedMachineOs.value,
         agentLabel: machine?.jenkins_node_name || undefined,
         gitRepoUrl: form.value.git_repo_url,
         gitBranch: form.value.git_branch,
         gitCredentialId: form.value.git_credential_id,
         workspaceCleanup: form.value.workspace_cleanup,
         reportEnabled: form.value.report_enabled,
+        reportResultsDir: form.value.report_results_dir,
         reportCommand: form.value.report_command,
         environmentVariables: form.value.environment_variables,
+        backendBaseUrl: backendBaseUrl.value || undefined,
+        buildPlanId: form.value.id ?? null,
+        existingJenkinsfileText: jenkinsfileText.value || form.value.jenkinsfile_text || '',
       })
       jenkinsfileText.value = generated
       lastCleanText = generated
@@ -939,6 +995,34 @@ const saveItem = async () => {
   saving.value = true
   try {
     let jfText = jenkinsfileText.value || ''
+    if (editorMode.value === 'visual') {
+      const machine = machines.value.find((m: any) => m.id === form.value.executor_machine)
+      jfText = generateJenkinsfile(form.value.steps, {
+        osType: selectedMachineOs.value,
+        agentLabel: machine?.jenkins_node_name || undefined,
+        gitRepoUrl: form.value.git_repo_url,
+        gitBranch: form.value.git_branch,
+        gitCredentialId: form.value.git_credential_id,
+        workspaceCleanup: form.value.workspace_cleanup,
+        reportEnabled: form.value.report_enabled,
+        reportResultsDir: form.value.report_results_dir,
+        reportCommand: form.value.report_command,
+        environmentVariables: form.value.environment_variables,
+        backendBaseUrl: backendBaseUrl.value || undefined,
+        buildPlanId: form.value.id ?? null,
+        existingJenkinsfileText: jenkinsfileText.value || form.value.jenkinsfile_text || '',
+      })
+      suppressDirtyWatch = true
+      jenkinsfileText.value = jfText
+      nextTick(() => {
+        suppressDirtyWatch = false
+      })
+    }
+    jfText = upsertJenkinsfileEnvironment(jfText, {
+      environmentVariables: form.value.environment_variables,
+      backendBaseUrl: backendBaseUrl.value || undefined,
+      buildPlanId: form.value.id ?? null,
+    })
     const repeatRunTimes = Number(form.value.repeat_run_times || 1)
     const safeRepeatRunTimes = Math.min(
       20,
@@ -963,6 +1047,7 @@ const saveItem = async () => {
       git_credential_id: form.value.git_credential_id || '',
       workspace_cleanup: form.value.workspace_cleanup ?? true,
       report_enabled: form.value.report_enabled || false,
+      report_results_dir: form.value.report_results_dir || 'allure-results',
       report_command: form.value.report_command || '',
       repeat_run_times: safeRepeatRunTimes,
       repeat_failure_policy: form.value.repeat_failure_policy || 'continue_all',

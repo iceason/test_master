@@ -13,6 +13,7 @@ from urllib.parse import quote_plus
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from .testing_serializers import report_url_for_notification
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ def run_repeated_builds_sync(plan_id, triggered_by='system', trigger_type='manua
 def run_build_sync(execution_id):
     """Synchronous build runner (used by both Celery and thread fallback)."""
     from .models import BuildExecution
-    from .jenkins_client import create_jenkins_client, sync_jenkins_job
+    from .jenkins_client import create_jenkins_client
 
     try:
         execution = BuildExecution.objects.select_related(
@@ -182,23 +183,7 @@ def run_build_sync(execution_id):
     try:
         # 1. Trigger Jenkins build
         params = _build_jenkins_params(plan, execution)
-        try:
-            queue_id = client.trigger_build(plan.jenkins_job_name, parameters=params)
-        except Exception as e:
-            err = str(e).lower()
-            needs_param_retry = '400' in err or 'buildwithparameters' in err
-            if needs_param_retry:
-                logger.warning(
-                    "Parameterized Jenkins trigger failed for plan %s, trying one auto-sync and retry: %s",
-                    plan.id, e
-                )
-                sync_jenkins_job(plan)
-                client = create_jenkins_client(plan)
-                if not client:
-                    raise RuntimeError("Jenkins client unavailable after sync retry")
-                queue_id = client.trigger_build(plan.jenkins_job_name, parameters=params)
-            else:
-                raise
+        queue_id = client.trigger_build(plan.jenkins_job_name, parameters=params)
         execution.log_text = f"Jenkins job queued (queue_id={queue_id})\n"
         execution.save(update_fields=['log_text'])
 
@@ -229,8 +214,9 @@ def run_build_sync(execution_id):
         # 5. Fetch test report
         _fetch_report(client, execution, plan.jenkins_job_name, build_number)
 
-        # 6. Send notification (wait for Allure zip upload when report_enabled — otherwise {{allure_report_url}} is empty)
+        # 6. Send notification
         schedule_build_notifications(execution.id)
+        _send_external_callback(execution)
 
     except Exception as e:
         logger.exception("Build execution %s failed", execution_id)
@@ -241,12 +227,12 @@ def run_build_sync(execution_id):
             delta = execution.finished_at - execution.started_at
             execution.duration_ms = int(delta.total_seconds() * 1000)
         execution.save()
-        _send_notification(execution)
+        schedule_build_notifications(execution.id)
         _send_external_callback(execution)
 
 
 def _build_jenkins_params(plan, execution):
-    """Build Jenkins job parameters passed to the pipeline."""
+    """Build Jenkins job parameters."""
     return {
         'EXECUTION_ID': str(execution.id),
     }
@@ -315,97 +301,6 @@ def _fetch_report(client, execution, job_name, build_number):
         pass
 
 
-def _should_defer_notification_for_report(plan, execution):
-    """
-    When report upload is enabled, Allure zip usually arrives *after* Jenkins marks the build done.
-    Defer the first notification until /media report exists (or timeout).
-    """
-    if not getattr(plan, 'report_enabled', False):
-        return False
-    if execution.report_type == 'allure' and (execution.report_url or '').strip():
-        return False
-    if execution.report_type == 'junit' and execution.report_data:
-        return False
-    return True
-
-
-def schedule_build_notifications(execution_id):
-    """
-    Queue notification after Allure upload when needed; otherwise send immediately.
-    """
-    from .models import BuildExecution
-
-    execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
-    plan = execution.build_plan
-    if _should_defer_notification_for_report(plan, execution):
-        try:
-            send_notification_when_report_ready.delay(execution_id)
-            return
-        except Exception as e:
-            logger.warning(
-                'Deferred notification not queued (%s); sending immediately.',
-                e,
-            )
-    execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
-    _send_notification(execution)
-    _send_external_callback(execution)
-
-
-@shared_task
-def send_notification_when_report_ready(execution_id):
-    """Poll until Allure report_url is set (zip uploaded) or timeout, then notify once."""
-    from .models import BuildExecution
-
-    max_wait = getattr(settings, 'NOTIFICATION_WAIT_FOR_REPORT_SECONDS', 240)
-    poll = getattr(settings, 'NOTIFICATION_REPORT_POLL_SECONDS', 5)
-    deadline = time.time() + max_wait
-
-    while time.time() < deadline:
-        execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
-        plan = execution.build_plan
-        if execution.report_type == 'allure' and (execution.report_url or '').strip():
-            _send_notification(execution)
-            _send_external_callback(execution)
-            return
-        if execution.report_type == 'junit' and execution.report_data:
-            _send_notification(execution)
-            _send_external_callback(execution)
-            return
-        if not getattr(plan, 'report_enabled', False):
-            _send_notification(execution)
-            _send_external_callback(execution)
-            return
-        time.sleep(poll)
-
-    execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
-    _send_notification(execution)
-    _send_external_callback(execution)
-
-
-@shared_task
-def send_report_upload_followup_if_needed(execution_id):
-    """
-    If Allure arrived after the deferred notification timed out, send one more notification with link.
-    Skips when upload finished within the wait window (first notification already included the URL).
-    """
-    from .models import BuildExecution
-
-    max_wait = getattr(settings, 'NOTIFICATION_WAIT_FOR_REPORT_SECONDS', 240)
-    try:
-        execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
-    except BuildExecution.DoesNotExist:
-        return
-    if execution.report_type != 'allure' or not (execution.report_url or '').strip():
-        return
-    fin = execution.finished_at
-    if not fin:
-        return
-    delta = (timezone.now() - fin).total_seconds()
-    if delta < max_wait:
-        return
-    _send_notification(execution)
-
-
 def _send_notification(execution):
     """Send build result notification based on plan config."""
     plan = execution.build_plan
@@ -417,7 +312,21 @@ def _send_notification(execution):
         try:
             from .models import EmailTemplate
 
-            ctx = _build_notification_context(execution)
+            status_emoji_map = {
+                'success': '✅', 'failed': '❌', 'cancelled': '⚠️',
+                'running': '🔄', 'pending': '⏳',
+            }
+            ctx = {
+                'plan_name': plan.name,
+                'status': execution.status,
+                'status_upper': execution.status.upper(),
+                'status_emoji': status_emoji_map.get(execution.status, '📋'),
+                'trigger_type': execution.trigger_type or '手动',
+                'triggered_by': execution.triggered_by or 'system',
+                'duration': execution.duration_display,
+                'jenkins_url': execution.jenkins_build_url or '-',
+                'timestamp': execution.started_at.strftime('%Y-%m-%d %H:%M:%S') if execution.started_at else '-',
+            }
 
             tpl = EmailTemplate.objects.filter(is_default=True).first()
             if tpl:
@@ -526,22 +435,15 @@ def _build_webhook_payload(execution, webhook_type):
 
 
 def _build_notification_context(execution):
-    from .testing_serializers import report_url_for_notification
-
     status_emoji_map = {
         'success': '✅', 'failed': '❌', 'cancelled': '⚠️',
         'running': '🔄', 'pending': '⏳',
     }
-    report_type = getattr(execution, 'report_type', '') or 'none'
-    allure_report_url = ''
-    if report_type == 'allure' and (execution.report_url or '').strip():
-        allure_report_url = report_url_for_notification(execution.report_url)
-    allure_report_block = ''
-    if allure_report_url:
-        allure_report_block = (
-            '### 测试报告\n'
-            f'- [查看 Allure 报告]({allure_report_url})\n\n'
-        )
+    allure_report_url = report_url_for_notification(execution.report_url)
+    allure_report_block = (
+        f"- Allure 报告：[{allure_report_url}]({allure_report_url})\n"
+        if allure_report_url else ""
+    )
     return {
         'plan_name': execution.build_plan.name,
         'status': execution.status,
@@ -552,10 +454,32 @@ def _build_notification_context(execution):
         'duration': execution.duration_display,
         'jenkins_url': execution.jenkins_build_url or '-',
         'timestamp': execution.started_at.strftime('%Y-%m-%d %H:%M:%S') if execution.started_at else '-',
-        'report_type': report_type,
-        'allure_report_url': allure_report_url,
+        'report_type': execution.report_type or '',
+        'allure_report_url': allure_report_url or '',
         'allure_report_block': allure_report_block,
     }
+
+
+def _should_defer_notification_for_report(plan, execution):
+    if not getattr(plan, 'report_enabled', False):
+        return False
+    if execution.report_url:
+        return False
+    if execution.status not in ('success', 'failed', 'cancelled'):
+        return False
+    return True
+
+
+def schedule_build_notifications(execution_id):
+    from .models import BuildExecution
+    try:
+        execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
+    except BuildExecution.DoesNotExist:
+        return
+    if _should_defer_notification_for_report(execution.build_plan, execution):
+        send_notification_when_report_ready.delay(execution.id)
+    else:
+        _send_notification(execution)
 
 
 def _render_dingtalk_template(execution, template_id=None):
@@ -646,11 +570,51 @@ def _send_dingtalk_groups(execution, dingtalk_cfg):
 
 
 @shared_task
-def send_build_notification(execution_id):
-    """Standalone task to send notifications (used by Jenkins webhook)."""
+def send_notification_when_report_ready(execution_id):
+    from .models import BuildExecution
+    wait_seconds = int(getattr(settings, 'NOTIFICATION_WAIT_FOR_REPORT_SECONDS', 240) or 240)
+    poll_seconds = int(getattr(settings, 'NOTIFICATION_REPORT_POLL_SECONDS', 5) or 5)
+    poll_seconds = max(1, poll_seconds)
+    deadline = time.time() + wait_seconds
+    last_execution = None
+    while time.time() <= deadline:
+        try:
+            execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
+            last_execution = execution
+        except BuildExecution.DoesNotExist:
+            return
+        if execution.report_url:
+            _send_notification(execution)
+            return
+        if execution.status not in ('success', 'failed', 'cancelled'):
+            return
+        time.sleep(poll_seconds)
+    if last_execution:
+        _send_notification(last_execution)
+
+
+@shared_task
+def send_report_upload_followup_if_needed(execution_id):
     from .models import BuildExecution
     try:
-        schedule_build_notifications(execution_id)
+        execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
+    except BuildExecution.DoesNotExist:
+        return
+    if not execution.report_url:
+        return
+    if not getattr(execution.build_plan, 'report_enabled', False):
+        return
+    _send_notification(execution)
+
+
+@shared_task
+def send_build_notification(execution_id):
+    """Standalone task to send notifications."""
+    from .models import BuildExecution
+    try:
+        execution = BuildExecution.objects.select_related('build_plan').get(id=execution_id)
+        schedule_build_notifications(execution.id)
+        _send_external_callback(execution)
     except BuildExecution.DoesNotExist:
         logger.error("BuildExecution %s not found for notification", execution_id)
 

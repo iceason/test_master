@@ -35,11 +35,9 @@ export const testJenkinsConnection = (machineId: number) =>
 export const getBuildPlans = (params?: any) =>
   request({ url: 'build-plans/', method: 'get', params })
 
-export const getBuildPlan = (id: number) =>
-  request({ url: `build-plans/${id}/`, method: 'get' })
+export const getBuildPlan = (id: number) => request({ url: `build-plans/${id}/`, method: 'get' })
 
-export const createBuildPlan = (data: any) =>
-  request({ url: 'build-plans/', method: 'post', data })
+export const createBuildPlan = (data: any) => request({ url: 'build-plans/', method: 'post', data })
 
 export const updateBuildPlan = (id: number, data: any) =>
   request({ url: `build-plans/${id}/`, method: 'put', data })
@@ -55,6 +53,9 @@ export const getBuildPlanExecutions = (id: number, params?: any) =>
 
 export const getJenkinsfilePreview = (planId: number) =>
   request({ url: `build-plans/${planId}/jenkinsfile_preview/`, method: 'get' })
+
+export const getBuildPlanJenkinsEnv = () =>
+  request<{ backend_base_url: string }>({ url: 'build-plans/jenkins-env/', method: 'get' })
 
 // -----------------------------------------------------------------------
 // Build Executions
@@ -88,7 +89,11 @@ export const syncJenkinsJob = (id: number) =>
   request({ url: `build-plans/${id}/sync_jenkins/`, method: 'post' })
 
 export const getProgressiveLog = (executionId: number, start?: number) =>
-  request({ url: `build-executions/${executionId}/progressive_log/`, method: 'get', params: start !== undefined ? { start } : undefined })
+  request({
+    url: `build-executions/${executionId}/progressive_log/`,
+    method: 'get',
+    params: start !== undefined ? { start } : undefined,
+  })
 
 // -----------------------------------------------------------------------
 // Environments
@@ -97,8 +102,7 @@ export const getProgressiveLog = (executionId: number, start?: number) =>
 export const getEnvironments = (params?: any) =>
   request({ url: 'environments/', method: 'get', params })
 
-export const getEnvironment = (id: number) =>
-  request({ url: `environments/${id}/`, method: 'get' })
+export const getEnvironment = (id: number) => request({ url: `environments/${id}/`, method: 'get' })
 
 export const createEnvironment = (data: any) =>
   request({ url: 'environments/', method: 'post', data })

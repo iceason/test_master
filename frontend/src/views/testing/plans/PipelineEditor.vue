@@ -8,7 +8,10 @@
         </div>
         <span class="pl-trigger__label">Start Trigger</span>
       </div>
-      <div class="pl-edge"><div class="pl-edge__line" /><div class="pl-edge__arrow" /></div>
+      <div class="pl-edge">
+        <div class="pl-edge__line" />
+        <div class="pl-edge__arrow" />
+      </div>
 
       <!-- Draggable Steps -->
       <VueDraggable
@@ -17,7 +20,7 @@
         handle=".pl-step__head"
         :animation="250"
         ghost-class="pl-step--ghost"
-        @update:modelValue="emitUpdate"
+        @update:model-value="emitUpdate"
       >
         <div v-for="(step, idx) in localSteps" :key="idx" class="pl-step-group">
           <div
@@ -30,18 +33,33 @@
             <div class="pl-step__head">
               <span class="pl-step__num">{{ idx + 1 }}</span>
               <span class="pl-step__name">{{ step.name || t('testing.pipeline.unnamed') }}</span>
-              <v-icon size="14" class="pl-step__drag" color="rgba(255,255,255,.5)">mdi-drag-horizontal-variant</v-icon>
+              <v-icon size="14" class="pl-step__drag" color="rgba(255,255,255,.5)"
+                >mdi-drag-horizontal-variant</v-icon
+              >
             </div>
             <div class="pl-step__body">
-              <div class="pl-step__script"><v-icon size="12" class="mr-1" color="grey-lighten-1">mdi-console</v-icon>{{ step.script || '—' }}</div>
+              <div class="pl-step__script">
+                <v-icon size="12" class="mr-1" color="grey-lighten-1">mdi-console</v-icon
+                >{{ step.script || '—' }}
+              </div>
               <div class="pl-step__tags">
-                <span class="pl-tag pl-tag--time"><v-icon size="10">mdi-timer-outline</v-icon>{{ step.timeout || 120 }}s</span>
-                <span class="pl-tag" :class="'pl-tag--' + (step.on_failure || 'stop')"><v-icon size="10">{{ failureIcon(step.on_failure) }}</v-icon>{{ failureLabel(step.on_failure) }}</span>
-                <span class="pl-step__del" @click.stop="removeStep(idx)"><v-icon size="14" color="error">mdi-trash-can-outline</v-icon></span>
+                <span class="pl-tag pl-tag--time"
+                  ><v-icon size="10">mdi-timer-outline</v-icon>{{ step.timeout || 120 }}s</span
+                >
+                <span class="pl-tag" :class="'pl-tag--' + (step.on_failure || 'stop')"
+                  ><v-icon size="10">{{ failureIcon(step.on_failure) }}</v-icon
+                  >{{ failureLabel(step.on_failure) }}</span
+                >
+                <span class="pl-step__del" @click.stop="removeStep(idx)"
+                  ><v-icon size="14" color="error">mdi-trash-can-outline</v-icon></span
+                >
               </div>
             </div>
           </div>
-          <div class="pl-edge"><div class="pl-edge__line" /><div class="pl-edge__arrow" /></div>
+          <div class="pl-edge">
+            <div class="pl-edge__line" />
+            <div class="pl-edge__arrow" />
+          </div>
         </div>
       </VueDraggable>
 
@@ -53,21 +71,58 @@
         <span class="pl-node-add__label">{{ t('testing.pipeline.addStep') }}</span>
       </div>
 
+      <!-- Auto report upload (when enabled in plan settings) -->
+      <template v-if="reportEnabled && reportCommandPreview">
+        <div class="pl-edge">
+          <div class="pl-edge__line" />
+          <div class="pl-edge__arrow" />
+        </div>
+        <div class="pl-step-group">
+          <div class="pl-step pl-step--report" @click.stop>
+            <div class="pl-step__head pl-step__head--report">
+              <v-icon size="16" class="mr-1">mdi-cloud-upload-outline</v-icon>
+              <span class="pl-step__name">{{ t('testing.plans.reportUploadStep') }}</span>
+              <v-chip size="x-small" variant="flat" color="white" class="ml-auto opacity-90">{{
+                machineOsType
+              }}</v-chip>
+            </div>
+            <div class="pl-step__body">
+              <div class="pl-step__script pl-step__script--muted">
+                <v-icon size="12" class="mr-1" color="grey-lighten-1"
+                  >mdi-information-outline</v-icon
+                >
+                {{ t('testing.plans.reportUploadHint') }}
+              </div>
+              <div class="pl-step__script report-cmd-preview">{{ reportCommandPreview }}</div>
+            </div>
+          </div>
+        </div>
+      </template>
     </div>
-
 
     <!-- Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="580" persistent>
       <v-card class="rounded-xl" elevation="16">
         <v-toolbar color="primary" density="compact">
-          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{ isNewStep ? t('testing.pipeline.newStep') : t('testing.steps.edit') }}</v-toolbar-title>
+          <v-toolbar-title class="text-subtitle-1 font-weight-bold">{{
+            isNewStep ? t('testing.pipeline.newStep') : t('testing.steps.edit')
+          }}</v-toolbar-title>
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" @click="cancelEdit" />
         </v-toolbar>
         <v-card-text class="pa-6">
-          <v-text-field v-model="editForm.name" :label="t('testing.steps.name')" variant="outlined" density="compact" class="mb-4" :placeholder="t('testing.pipeline.namePlaceholder')" />
+          <v-text-field
+            v-model="editForm.name"
+            :label="t('testing.steps.name')"
+            variant="outlined"
+            density="compact"
+            class="mb-4"
+            :placeholder="t('testing.pipeline.namePlaceholder')"
+          />
           <div class="mb-4">
-            <label class="text-caption text-medium-emphasis d-block mb-1">{{ t('testing.steps.script') }}</label>
+            <label class="text-caption text-medium-emphasis d-block mb-1">{{
+              t('testing.steps.script')
+            }}</label>
             <div class="script-editor-wrap">
               <Codemirror
                 v-model="editForm.script"
@@ -80,18 +135,40 @@
           </div>
           <v-row>
             <v-col cols="6">
-              <v-text-field v-model.number="editForm.timeout" :label="t('testing.steps.timeout')" variant="outlined" density="compact" type="number" suffix="s" />
+              <v-text-field
+                v-model.number="editForm.timeout"
+                :label="t('testing.steps.timeout')"
+                variant="outlined"
+                density="compact"
+                type="number"
+                suffix="s"
+              />
             </v-col>
             <v-col cols="6">
-              <v-select v-model="editForm.on_failure" :items="failureOptions" :label="t('testing.steps.onFailure')" variant="outlined" density="compact" />
+              <v-select
+                v-model="editForm.on_failure"
+                :items="failureOptions"
+                :label="t('testing.steps.onFailure')"
+                variant="outlined"
+                density="compact"
+              />
             </v-col>
           </v-row>
         </v-card-text>
         <v-divider />
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" class="text-none" @click="cancelEdit">{{ t('common.cancel') }}</v-btn>
-          <v-btn color="primary" variant="flat" class="text-none px-6" prepend-icon="mdi-check" @click="saveStep">{{ t('testing.pipeline.confirmBtn') }}</v-btn>
+          <v-btn variant="text" class="text-none" @click="cancelEdit">{{
+            t('common.cancel')
+          }}</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            class="text-none px-6"
+            prepend-icon="mdi-check"
+            @click="saveStep"
+            >{{ t('testing.pipeline.confirmBtn') }}</v-btn
+          >
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -110,7 +187,19 @@ const { t } = useI18n()
 
 const cmShellExtensions = [StreamLanguage.define(shell)]
 
-const props = defineProps<{ modelValue: any[] }>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: any[]
+    reportEnabled?: boolean
+    reportCommandPreview?: string
+    machineOsType?: string
+  }>(),
+  {
+    reportEnabled: false,
+    reportCommandPreview: '',
+    machineOsType: 'linux',
+  }
+)
 const emit = defineEmits<{ (e: 'update:modelValue', v: any[]): void }>()
 
 const localSteps = ref<any[]>([...props.modelValue])
@@ -126,71 +215,143 @@ const failureOptions = computed(() => [
   { title: t('testing.steps.failureOptions.retry'), value: 'retry' },
 ])
 
-const failureIcon = (v: string) => ({ stop: 'mdi-close-circle-outline', continue: 'mdi-arrow-right-circle-outline', retry: 'mdi-refresh' }[v] || 'mdi-close-circle-outline')
-const failureLabel = (v: string) => ({ stop: 'Stop', continue: 'Continue', retry: 'Retry' }[v] || 'Stop')
+const failureIcon = (v: string) =>
+  ({
+    stop: 'mdi-close-circle-outline',
+    continue: 'mdi-arrow-right-circle-outline',
+    retry: 'mdi-refresh',
+  })[v] || 'mdi-close-circle-outline'
+const failureLabel = (v: string) =>
+  ({ stop: 'Stop', continue: 'Continue', retry: 'Retry' })[v] || 'Stop'
 
-watch(() => props.modelValue, (v) => { localSteps.value = [...v] }, { deep: true })
+watch(
+  () => props.modelValue,
+  (v) => {
+    localSteps.value = [...v]
+  },
+  { deep: true }
+)
 
-const emitUpdate = () => { emit('update:modelValue', [...localSteps.value]) }
+const emitUpdate = () => {
+  emit('update:modelValue', [...localSteps.value])
+}
 
-const addStep = () => { isNewStep.value = true; editingIdx.value = localSteps.value.length; editForm.value = { name: '', script: '', timeout: 120, on_failure: 'stop' }; editDialog.value = true }
-const removeStep = (idx: number) => { localSteps.value.splice(idx, 1); emitUpdate() }
-const editStep = (idx: number) => { isNewStep.value = false; editingIdx.value = idx; editForm.value = { ...localSteps.value[idx] }; editDialog.value = true }
+const addStep = () => {
+  const os = (props.machineOsType || 'linux').toLowerCase()
+  const defaultScript =
+    os === 'windows' ? '@echo off\necho Hello from TestMaster' : 'echo "Hello from TestMaster"'
+  isNewStep.value = true
+  editingIdx.value = localSteps.value.length
+  editForm.value = { name: '', script: defaultScript, timeout: 120, on_failure: 'stop' }
+  editDialog.value = true
+}
+const removeStep = (idx: number) => {
+  localSteps.value.splice(idx, 1)
+  emitUpdate()
+}
+const editStep = (idx: number) => {
+  isNewStep.value = false
+  editingIdx.value = idx
+  editForm.value = { ...localSteps.value[idx] }
+  editDialog.value = true
+}
 
 const saveStep = () => {
-  if (isNewStep.value) { localSteps.value.push({ ...editForm.value }) }
-  else if (editingIdx.value >= 0 && editingIdx.value < localSteps.value.length) { localSteps.value[editingIdx.value] = { ...editForm.value } }
-  emitUpdate(); editDialog.value = false
+  if (isNewStep.value) {
+    localSteps.value.push({ ...editForm.value })
+  } else if (editingIdx.value >= 0 && editingIdx.value < localSteps.value.length) {
+    localSteps.value[editingIdx.value] = { ...editForm.value }
+  }
+  emitUpdate()
+  editDialog.value = false
 }
-const cancelEdit = () => { editDialog.value = false }
+const cancelEdit = () => {
+  editDialog.value = false
+}
 </script>
 
 <style scoped>
 /* ===== Layout ===== */
-.pipeline-editor { width: 100%; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.pipeline-track { display: flex; align-items: center; padding: 40px 28px; overflow-x: auto; width: 100%; justify-content: center; }
+.pipeline-editor {
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.pipeline-track {
+  display: flex;
+  align-items: center;
+  padding: 40px 28px;
+  overflow-x: auto;
+  width: 100%;
+  justify-content: center;
+}
 
 /* ===== Start Trigger ===== */
 .pl-trigger {
   position: relative;
-  width: 52px; height: 52px; flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
 }
 .pl-trigger__circle {
-  width: 52px; height: 52px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgb(25, 118, 210);
-  box-shadow: 0 3px 10px rgba(25, 118, 210, .3);
+  box-shadow: 0 3px 10px rgba(25, 118, 210, 0.3);
 }
 .pl-trigger__label {
-  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   margin-top: 6px;
-  font-size: 11px; font-weight: 600; color: rgba(0, 0, 0, .5);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
   white-space: nowrap;
 }
 
 /* ===== Add node ===== */
 .pl-node-add-wrap {
   position: relative;
-  width: 52px; height: 52px; flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
   cursor: pointer;
 }
 .pl-node--add {
-  width: 52px; height: 52px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgb(25, 118, 210);
-  box-shadow: 0 3px 10px rgba(25, 118, 210, .3);
-  transition: all .2s;
+  box-shadow: 0 3px 10px rgba(25, 118, 210, 0.3);
+  transition: all 0.2s;
 }
 .pl-node-add-wrap:hover .pl-node--add {
-  box-shadow: 0 5px 16px rgba(25, 118, 210, .4);
+  box-shadow: 0 5px 16px rgba(25, 118, 210, 0.4);
   transform: scale(1.08);
 }
 .pl-node-add__label {
-  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
   margin-top: 6px;
-  font-size: 11px; font-weight: 600; color: rgba(0, 0, 0, .5);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
   white-space: nowrap;
-  transition: color .2s;
+  transition: color 0.2s;
 }
 .pl-node-add-wrap:hover .pl-node-add__label {
   color: #1976d2;
@@ -198,84 +359,187 @@ const cancelEdit = () => { editDialog.value = false }
 
 /* ===== Connector edge ===== */
 .pl-edge {
-  width: 44px; display: flex; align-items: center; flex-shrink: 0; position: relative;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
 }
 .pl-edge__line {
-  position: absolute; left: 0; right: 10px; top: 50%; height: 2px;
+  position: absolute;
+  left: 0;
+  right: 10px;
+  top: 50%;
+  height: 2px;
   background: linear-gradient(90deg, #bdbdbd, #e0e0e0);
   transform: translateY(-50%);
 }
 .pl-edge__arrow {
-  position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
-  width: 0; height: 0;
-  border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid #bdbdbd;
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #bdbdbd;
 }
 
 /* ===== Steps area ===== */
-.pl-steps { display: flex; align-items: center; gap: 0; }
-.pl-step-group { display: flex; align-items: center; }
+.pl-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+.pl-step-group {
+  display: flex;
+  align-items: center;
+}
 
 /* ===== Step card ===== */
 .pl-step {
-  width: 210px; height: 120px;
-  background: #fff; border-radius: 14px; overflow: hidden;
-  border: 1.5px solid rgba(0,0,0,.06);
-  box-shadow: 0 1px 6px rgba(0,0,0,.05);
-  cursor: pointer; flex-shrink: 0;
-  display: flex; flex-direction: column;
-  transition: all .22s cubic-bezier(.4,0,.2,1);
+  width: 210px;
+  height: 120px;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1.5px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .pl-step--active {
-  border-color: rgba(25,118,210,.35);
-  box-shadow: 0 6px 24px rgba(25,118,210,.12);
+  border-color: rgba(25, 118, 210, 0.35);
+  box-shadow: 0 6px 24px rgba(25, 118, 210, 0.12);
   transform: translateY(-3px);
 }
-.pl-step--ghost { opacity: .35; }
+.pl-step--ghost {
+  opacity: 0.35;
+}
+.pl-step--report {
+  border-color: rgba(33, 150, 243, 0.35);
+}
 
 .pl-step__head {
-  display: flex; align-items: center; gap: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 10px 12px;
   background: linear-gradient(135deg, #1565c0, #42a5f5);
-  cursor: grab; min-height: 38px;
+  cursor: grab;
+  min-height: 38px;
 }
-.pl-step__head:active { cursor: grabbing; }
+.pl-step__head:active {
+  cursor: grabbing;
+}
 .pl-step__num {
-  width: 22px; height: 22px; border-radius: 6px;
-  background: rgba(255,255,255,.22); color: #fff;
-  font-size: 11px; font-weight: 800;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .pl-step__name {
-  font-size: 13px; font-weight: 600; color: #fff;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
 }
-.pl-step__drag { opacity: 0; transition: opacity .2s; }
-.pl-step--active .pl-step__drag { opacity: 1; }
+.pl-step__drag {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.pl-step--active .pl-step__drag {
+  opacity: 1;
+}
+.pl-step__head--report {
+  background: linear-gradient(135deg, #1e88e5, #42a5f5);
+}
 
-.pl-step__body { padding: 10px 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.pl-step__body {
+  padding: 10px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
 .pl-step__script {
-  display: flex; align-items: center;
-  font-family: 'Fira Code','SF Mono','Courier New',monospace;
-  font-size: 11px; color: #78909c;
-  background: #f5f7fa; border-radius: 6px; padding: 5px 8px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: flex;
+  align-items: center;
+  font-family: 'Fira Code', 'SF Mono', 'Courier New', monospace;
+  font-size: 11px;
+  color: #78909c;
+  background: #f5f7fa;
+  border-radius: 6px;
+  padding: 5px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-bottom: 8px;
 }
-.pl-step__tags { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.pl-step__script--muted {
+  color: rgba(0, 0, 0, 0.6);
+}
+.report-cmd-preview {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.pl-step__tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 .pl-tag {
-  display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 7px; border-radius: 4px;
-  font-size: 10px; font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
 }
-.pl-tag--time   { background: rgba(25,118,210,.07); color: #1565c0; }
-.pl-tag--stop   { background: rgba(229,57,53,.07);  color: #c62828; }
-.pl-tag--continue { background: rgba(30,136,229,.07); color: #1565c0; }
-.pl-tag--retry  { background: rgba(245,124,0,.07);  color: #e65100; }
+.pl-tag--time {
+  background: rgba(25, 118, 210, 0.07);
+  color: #1565c0;
+}
+.pl-tag--stop {
+  background: rgba(229, 57, 53, 0.07);
+  color: #c62828;
+}
+.pl-tag--continue {
+  background: rgba(30, 136, 229, 0.07);
+  color: #1565c0;
+}
+.pl-tag--retry {
+  background: rgba(245, 124, 0, 0.07);
+  color: #e65100;
+}
 .pl-step__del {
-  margin-left: auto; opacity: 0; cursor: pointer; transition: opacity .2s;
-  display: flex; align-items: center; padding: 2px;
+  margin-left: auto;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 2px;
 }
-.pl-step--active .pl-step__del { opacity: 1; }
+.pl-step--active .pl-step__del {
+  opacity: 1;
+}
 
 /* ===== Script editor ===== */
 .script-editor-wrap {
@@ -307,5 +571,8 @@ const cancelEdit = () => { editDialog.value = false }
 }
 
 /* ===== Misc ===== */
-.pl-empty { padding-bottom: 20px; opacity: .5; }
+.pl-empty {
+  padding-bottom: 20px;
+  opacity: 0.5;
+}
 </style>

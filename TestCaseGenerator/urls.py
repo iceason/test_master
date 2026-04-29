@@ -16,7 +16,6 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    # Allow Allure HTML under /media to render inside the Vue dialog iframe (no X-Frame-Options / COOP issues).
     urlpatterns += static(
         settings.MEDIA_URL,
         view=xframe_options_exempt(serve),

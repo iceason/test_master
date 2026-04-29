@@ -79,7 +79,8 @@ export default {
     reasonInvalid: 'Invalid invitation link',
     inviteMenu: 'Registration invite',
     inviteDialogTitle: 'Registration invite',
-    inviteDialogHint: 'Share this link with the new user. Each link registers one account only and becomes invalid after use; links expire if not used within 24 hours.',
+    inviteDialogHint:
+      'Share this link with the new user. Each link registers one account only and becomes invalid after use; links expire if not used within 24 hours.',
     inviteLink: 'Invitation link',
     inviteExpiresAt: 'Valid until: {time}',
     copyLink: 'Copy link',
@@ -106,46 +107,52 @@ export default {
   intro: {
     welcome: 'Welcome back, {name}',
     title: 'Test Master — All-in-One API Testing Platform',
-    subtitle: 'From project creation, API management, AI test generation, to automated execution and continuous builds — a complete API quality assurance solution.',
+    subtitle:
+      'From project creation, API management, AI test generation, to automated execution and continuous builds — a complete API quality assurance solution.',
     features: {
       projectManagement: {
         title: 'Project Management',
-        desc: 'Create project spaces and manage team members with role-based permissions to keep your APIs and test cases well-organized.'
+        desc: 'Create project spaces and manage team members with role-based permissions to keep your APIs and test cases well-organized.',
       },
       apiManagement: {
         title: 'API Management',
-        desc: 'Centrally manage API definitions with manual entry and one-click OpenAPI / Swagger schema import.'
+        desc: 'Centrally manage API definitions with manual entry and one-click OpenAPI / Swagger schema import.',
       },
       aiGeneration: {
         title: 'AI Generation',
-        desc: 'Automatically generate test cases from API schemas using AI, covering positive, boundary, and edge-case scenarios.'
+        desc: 'Automatically generate test cases from API schemas using AI, covering positive, boundary, and edge-case scenarios.',
       },
       interfaceTesting: {
         title: 'Interface Testing',
-        desc: 'Manage and edit test cases online with category filters, batch operations, and execution history tracking.'
+        desc: 'Manage and edit test cases online with category filters, batch operations, and execution history tracking.',
       },
       continuousBuild: {
         title: 'Continuous Build',
-        desc: 'Integrate with Jenkins and other CI executors to configure build plans for automated regression testing.'
+        desc: 'Integrate with Jenkins and other CI executors to configure build plans for automated regression testing.',
       },
       export: {
         title: 'Flexible Export',
-        desc: 'Export test cases to Excel, XMind, YAML and more for offline review or integration with other systems.'
-      }
+        desc: 'Export test cases to Excel, XMind, YAML and more for offline review or integration with other systems.',
+      },
     },
     guide: {
       title: 'Quick Start',
       step1: 'Create Project',
-      step1Desc: 'Create a new project in "Project Management" and invite team members to manage APIs and environments together.',
+      step1Desc:
+        'Create a new project in "Project Management" and invite team members to manage APIs and environments together.',
       step2: 'Import APIs',
-      step2Desc: 'Go to "Interface Management" to manually create or batch-import API definitions via OpenAPI files.',
+      step2Desc:
+        'Go to "Interface Management" to manually create or batch-import API definitions via OpenAPI files.',
       step3: 'Generate Cases',
-      step3Desc: 'Trigger AI test case generation from the interface list, automatically covering positive, boundary, and edge-case scenarios.',
+      step3Desc:
+        'Trigger AI test case generation from the interface list, automatically covering positive, boundary, and edge-case scenarios.',
       step4: 'Execute & Verify',
-      step4Desc: 'Review and edit cases in "Interface Testing", configure build plans for automated continuous regression.',
+      step4Desc:
+        'Review and edit cases in "Interface Testing", configure build plans for automated continuous regression.',
       step5: 'Export & Deliver',
-      step5Desc: 'Export test cases as Excel / XMind / YAML for review, archiving, or CI/CD pipeline integration.'
-    }
+      step5Desc:
+        'Export test cases as Excel / XMind / YAML for review, archiving, or CI/CD pipeline integration.',
+    },
   },
   interface: {
     title: 'Interface Management',
@@ -286,9 +293,11 @@ export default {
         gitRepoUrl: 'Git Repository URL',
         gitBranch: 'Git Branch',
         gitCredentialId: 'Jenkins Credential ID',
-        gitCredentialIdHint: 'Credentials ID configured in Jenkins (e.g. github-user) for code checkout authentication',
+        gitCredentialIdHint:
+          'Credentials ID configured in Jenkins (e.g. github-user) for code checkout authentication',
         workspaceCleanup: 'Clean workspace before build',
         reportEnabled: 'Enable Report Upload',
+        reportResultsDir: 'Report Results Directory',
         reportCommand: 'Report Generation Command',
         repeatRunTimes: 'Repeat Run Times',
         repeatRunTimesHint: 'Number of rounds triggered by one immediate build click (1~20)',
@@ -346,7 +355,10 @@ export default {
         emailHint: 'Type an email address and press Enter to add, supports multiple recipients',
         emailInvalid: 'The following email addresses are invalid: {emails}',
       },
-      jenkinsAutoCreate: 'After saving, a Pipeline Job with the same name as the plan will be automatically created on Jenkins, and the Jenkinsfile pipeline will be synced',
+      jenkinsAutoCreate:
+        'After saving, a Pipeline Job with the same name as the plan will be automatically created on Jenkins, and the Jenkinsfile pipeline will be synced',
+      reportUploadStep: 'Report Upload',
+      reportUploadHint: 'Automatically compress and upload Allure report after build',
       fillRequired: 'Please fill in required fields',
       formValidationError: 'Form validation error, please check required fields',
       addVariable: 'Add Variable',
@@ -379,6 +391,7 @@ export default {
       cancelConfirm: 'Are you sure you want to cancel this build?',
       noLogs: 'No logs available',
       noReport: 'No report available',
+      popupBlocked: 'Pop-up was blocked. Allow pop-ups for this site and try again.',
       status: {
         pending: 'Pending',
         running: 'Running',
@@ -398,7 +411,8 @@ export default {
       email: 'Email Notification',
       emailRecipients: 'Recipients',
       webhook: 'Webhook Notification',
-      webhookLegacyHint: 'Compatibility mode (recommended to migrate to DingTalk group config below)',
+      webhookLegacyHint:
+        'Compatibility mode (recommended to migrate to DingTalk group config below)',
       webhookUrl: 'Webhook URL',
       webhookType: 'Type',
       dingtalk: 'DingTalk',
@@ -420,9 +434,11 @@ export default {
       textEditor: 'Text Editor',
       parseWarning: 'The following issues were found while parsing Jenkinsfile:',
       parseFailed: 'Parse failed, original text has been preserved',
-      switchConfirm: 'Switching editor mode will attempt to convert content, which may lose some formatting. Are you sure?',
+      switchConfirm:
+        'Switching editor mode will attempt to convert content, which may lose some formatting. Are you sure?',
       switchTitle: 'Switch Editor',
-      switchUnsavedWarn: 'The text editor has unsaved changes. Unparseable content may be lost when switching to the visual editor. Continue?',
+      switchUnsavedWarn:
+        'The text editor has unsaved changes. Unparseable content may be lost when switching to the visual editor. Continue?',
     },
   },
   generation: {
@@ -440,10 +456,12 @@ export default {
     moveInterface: 'Move Interface',
     targetDirectory: 'Target Directory',
     selectInterface: 'Select an Interface',
-    selectInterfaceDesc: 'Please select an interface from the left tree to view details or generate test cases.',
+    selectInterfaceDesc:
+      'Please select an interface from the left tree to view details or generate test cases.',
     interfaceDefinition: 'Interface Definition',
     testCases: 'Test Cases',
-    generateTip: 'Supports Positive, Negative, Boundary, and Security testing strategies to automatically generate test cases covering various scenarios.',
+    generateTip:
+      'Supports Positive, Negative, Boundary, and Security testing strategies to automatically generate test cases covering various scenarios.',
     selectStrategies: 'Select Generation Strategies',
     startGenerate: 'Start Generate',
     untitledInterface: 'Untitled Interface',
@@ -504,7 +522,7 @@ export default {
       security_nosql_injection: 'NoSQL Injection',
       security_jwt: 'JWT/Token Security',
       security_rate_limit: 'Rate Limiting',
-    }
+    },
   },
   executionRecords: {
     title: 'Execution Records',
@@ -602,7 +620,7 @@ export default {
       email: 'Email',
       oldPassword: 'Old Password',
       newPassword: 'New Password',
-      confirmPassword: 'Confirm Password'
+      confirmPassword: 'Confirm Password',
     },
     emailInvalid: 'Invalid email format',
     passwordTooShort: 'Password must be at least 6 characters',
@@ -614,7 +632,7 @@ export default {
     avatarTip: 'Supports JPG, PNG formats, recommended size 200x200px',
     securityTip1: 'Update your password regularly with strong combinations',
     securityTip2: 'Do not share your account information with others',
-    securityTip3: 'Contact admin immediately if you notice suspicious activity'
+    securityTip3: 'Contact admin immediately if you notice suspicious activity',
   },
   settings: {
     environments: {
@@ -637,7 +655,8 @@ export default {
       empty: 'No environments configured',
       createFirst: 'Create the first environment',
       fillRequired: 'Please fill in required fields',
-      deleteConfirm: 'Are you sure you want to delete environment "{name}"? This action cannot be undone.',
+      deleteConfirm:
+        'Are you sure you want to delete environment "{name}"? This action cannot be undone.',
     },
     emailTemplates: {
       title: 'Email Notification Templates',
@@ -706,7 +725,8 @@ export default {
     descriptionLabel: 'Description',
     empty: 'No projects yet',
     createFirst: 'Create your first project',
-    deleteConfirm: 'Are you sure you want to delete project "{name}"? All directories, interfaces, and test cases under this project will be permanently removed.',
+    deleteConfirm:
+      'Are you sure you want to delete project "{name}"? All directories, interfaces, and test cases under this project will be permanently removed.',
     createdBy: 'Created by: {name}',
     memberCount: '{count} members',
     members: 'Members',
