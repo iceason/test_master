@@ -389,6 +389,13 @@ class BuildPlan(models.Model):
     # 报告配置
     report_enabled = models.BooleanField(default=False, verbose_name="启用报告上传")
     report_command = models.TextField(blank=True, verbose_name="报告生成命令")
+    report_results_dir = models.CharField(
+        max_length=255,
+        blank=True,
+        default='allure-results',
+        verbose_name='报告目录',
+        help_text='构建机中待上传报告目录，默认 allure-results',
+    )
 
     # 定时执行
     cron_expression = models.CharField(max_length=100, blank=True, verbose_name="Cron 表达式")

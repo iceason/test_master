@@ -181,9 +181,27 @@ def run_build_sync(execution_id):
         return
 
     try:
+        # Ensure Jenkins job definition is up-to-date before triggering.
+        # This is critical for parameterized builds (EXECUTION_ID).
+        try:
+            from .jenkins_client import sync_jenkins_job
+            sync_jenkins_job(plan)
+        except Exception as sync_err:
+            logger.warning("Pre-trigger Jenkins sync failed for plan %s: %s", plan.id, sync_err)
+
         # 1. Trigger Jenkins build
         params = _build_jenkins_params(plan, execution)
-        queue_id = client.trigger_build(plan.jenkins_job_name, parameters=params)
+        try:
+            queue_id = client.trigger_build(plan.jenkins_job_name, parameters=params)
+        except Exception as trigger_err:
+            # Retry once after forcing a fresh Jenkins sync, in case job
+            # parameter metadata is stale and has not picked EXECUTION_ID yet.
+            if 'Parameterized build rejected by Jenkins' in str(trigger_err):
+                from .jenkins_client import sync_jenkins_job
+                sync_jenkins_job(plan)
+                queue_id = client.trigger_build(plan.jenkins_job_name, parameters=params)
+            else:
+                raise
         execution.log_text = f"Jenkins job queued (queue_id={queue_id})\n"
         execution.save(update_fields=['log_text'])
 

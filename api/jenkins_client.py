@@ -88,6 +88,15 @@ class JenkinsClient:
                     job_name, queue_id
                 )
                 return queue_id
+            # For non-empty parameters (e.g. EXECUTION_ID), never downgrade to
+            # plain /build, otherwise Jenkins gets no params and report upload
+            # URL becomes invalid (/api/upload-report// -> 404).
+            if params is not None and '400' in str(e):
+                raise RuntimeError(
+                    f"Parameterized build rejected by Jenkins (HTTP 400). "
+                    f"Please sync job config and ensure it accepts parameters. "
+                    f"Original error: {e}"
+                ) from e
             raise
 
     def get_build_number_from_queue(self, queue_id, timeout=120, poll_interval=3):
@@ -195,6 +204,52 @@ def create_jenkins_client(build_plan):
 
 import xml.sax.saxutils as saxutils
 import re
+
+
+def _ensure_execution_id_wiring(script: str) -> str:
+    """
+    Ensure Jenkinsfile always has EXECUTION_ID parameter + environment binding.
+    This protects report upload flow even when user provides raw Jenkinsfile text.
+    """
+    if not script:
+        return script
+    s = script
+
+    exec_param_line = "        string(name: 'EXECUTION_ID', defaultValue: '', description: 'BuildExecution ID from TestMaster')"
+    exec_env_line = '        EXECUTION_ID = "${params.EXECUTION_ID}"'
+
+    # Ensure parameters block exists and contains EXECUTION_ID.
+    if re.search(r'\bparameters\s*\{', s):
+        if 'EXECUTION_ID' not in s:
+            s = re.sub(r'(\bparameters\s*\{)', r"\1\n" + exec_param_line, s, count=1)
+    else:
+        insert = "\n    parameters {\n" + exec_param_line + "\n    }\n"
+        agent_match = re.search(r'^\s*agent[^\n]*$', s, flags=re.M)
+        if agent_match:
+            idx = agent_match.end()
+            s = s[:idx] + insert + s[idx:]
+        else:
+            s = s.replace('pipeline {', 'pipeline {' + insert, 1)
+
+    # Ensure environment block exists and contains EXECUTION_ID binding.
+    if re.search(r'\benvironment\s*\{', s):
+        if re.search(r'^\s*EXECUTION_ID\s*=', s, flags=re.M) is None:
+            s = re.sub(r'(\benvironment\s*\{)', r"\1\n" + exec_env_line, s, count=1)
+    else:
+        insert = "\n    environment {\n" + exec_env_line + "\n    }\n"
+        params_match = re.search(r'\bparameters\s*\{[\s\S]*?\n\s*\}', s)
+        if params_match:
+            idx = params_match.end()
+            s = s[:idx] + insert + s[idx:]
+        else:
+            agent_match = re.search(r'^\s*agent[^\n]*$', s, flags=re.M)
+            if agent_match:
+                idx = agent_match.end()
+                s = s[:idx] + insert + s[idx:]
+            else:
+                s = s.replace('pipeline {', 'pipeline {' + insert, 1)
+
+    return s
 
 
 def _escape_groovy(text):
@@ -385,7 +440,7 @@ def build_pipeline_job_xml(
     """
     escaped_desc = saxutils.escape(description)
     if raw_jenkinsfile:
-        pipeline_script = raw_jenkinsfile
+        pipeline_script = _ensure_execution_id_wiring(raw_jenkinsfile)
     else:
         pipeline_script = build_pipeline_script(
             steps=steps, os_type=os_type, node_label=node_label,
@@ -403,7 +458,18 @@ def build_pipeline_job_xml(
         '<flow-definition plugin="workflow-job">\n'
         f'  <description>{escaped_desc}</description>\n'
         '  <keepDependencies>false</keepDependencies>\n'
-        '  <properties/>\n'
+        '  <properties>\n'
+        '    <hudson.model.ParametersDefinitionProperty>\n'
+        '      <parameterDefinitions>\n'
+        '        <hudson.model.StringParameterDefinition>\n'
+        '          <name>EXECUTION_ID</name>\n'
+        '          <description>BuildExecution ID from TestMaster</description>\n'
+        '          <defaultValue></defaultValue>\n'
+        '          <trim>false</trim>\n'
+        '        </hudson.model.StringParameterDefinition>\n'
+        '      </parameterDefinitions>\n'
+        '    </hudson.model.ParametersDefinitionProperty>\n'
+        '  </properties>\n'
         '  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps">\n'
         f'    <script>{escaped_script}</script>\n'
         '    <sandbox>true</sandbox>\n'

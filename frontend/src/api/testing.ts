@@ -83,14 +83,14 @@ export const stopBuildPlan = (id: number) =>
   request({ url: `build-plans/${id}/stop/`, method: 'post' })
 
 export const refreshBuildPlanStatus = (id: number) =>
-  request({ url: `build-plans/${id}/refresh_status/`, method: 'post' })
+  request({ url: `build-plans/${id}/refresh-status/`, method: 'get' })
 
 export const syncJenkinsJob = (id: number) =>
-  request({ url: `build-plans/${id}/sync_jenkins/`, method: 'post' })
+  request({ url: `build-plans/${id}/sync-jenkins/`, method: 'post' })
 
 export const getProgressiveLog = (executionId: number, start?: number) =>
   request({
-    url: `build-executions/${executionId}/progressive_log/`,
+    url: `build-executions/${executionId}/progressive-log/`,
     method: 'get',
     params: start !== undefined ? { start } : undefined,
   })

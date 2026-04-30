@@ -682,6 +682,12 @@ const headers = computed(() => [
   { title: 'Jenkins Job', key: 'jenkins_job_name' },
   { title: t('testing.plans.fields.isCronEnabled'), key: 'is_cron_enabled' },
   { title: t('testing.plans.fields.stepCount'), key: 'step_count', width: 80 },
+  {
+    title: t('testing.plans.fields.repeatRunTimes'),
+    key: 'repeat_run_times',
+    width: 96,
+    align: 'center' as const,
+  },
   { title: t('testing.plans.fields.lastExecution'), key: 'last_execution_status' },
   { title: t('testing.plans.fields.status'), key: 'status', width: 100 },
   {

@@ -194,9 +194,9 @@
                 t('testing.plans.detail.enabled')
               }}</v-chip>
             </div>
-            <div v-if="plan.report_command" class="ext-row">
-              <span class="ext-key">{{ t('testing.plans.detail.command') }}</span>
-              <code class="ext-val">{{ plan.report_command }}</code>
+            <div class="ext-row">
+              <span class="ext-key">{{ t('testing.plans.fields.reportResultsDir') }}</span>
+              <code class="ext-val">{{ plan.report_results_dir || 'allure-results' }}</code>
             </div>
           </div>
         </v-col>
@@ -220,6 +220,60 @@
                 <span>{{ ev.value }}</span>
               </v-chip>
             </div>
+          </div>
+        </v-col>
+      </v-row>
+    </v-sheet>
+
+    <!-- 执行配置 / 推送配置 -->
+    <v-sheet
+      class="rounded-xl mb-5 pa-5"
+      color="surface"
+      elevation="0"
+      style="border: 1px solid rgba(0, 0, 0, 0.06)"
+    >
+      <v-row dense>
+        <v-col cols="12" md="6">
+          <div class="ext-section">
+            <div class="ext-title">
+              <v-icon size="16" color="teal" class="mr-2">mdi-repeat-once</v-icon>
+              {{ t('testing.plans.detail.runConfig') }}
+            </div>
+            <div class="ext-row run-config-row">
+              <span class="ext-key ext-key--wide">{{
+                t('testing.plans.fields.repeatRunTimes')
+              }}</span>
+              <span class="ext-val-inline font-weight-medium">{{
+                plan.repeat_run_times ?? 1
+              }}</span>
+            </div>
+            <div class="ext-row run-config-row">
+              <span class="ext-key ext-key--wide">{{
+                t('testing.plans.fields.repeatFailurePolicy')
+              }}</span>
+              <span class="ext-val-inline">{{
+                t(
+                  `testing.plans.repeatFailurePolicy.${plan.repeat_failure_policy || 'continue_all'}`
+                )
+              }}</span>
+            </div>
+            <div class="ext-row run-config-row run-config-row--last">
+              <span class="ext-key ext-key--wide">{{
+                t('testing.plans.detail.execHistoryTotal')
+              }}</span>
+              <span class="ext-val-inline"
+                >{{ executions.length }} {{ t('testing.plans.detail.recordUnit') }}</span
+              >
+            </div>
+          </div>
+        </v-col>
+        <v-col cols="12" md="6">
+          <div class="ext-section">
+            <div class="ext-title">
+              <v-icon size="16" color="teal" class="mr-2">mdi-bell-outline</v-icon>
+              {{ t('testing.plans.detail.pushConfig') }}
+            </div>
+            <div class="text-body-2 push-summary">{{ pushConfigSummary }}</div>
           </div>
         </v-col>
       </v-row>
@@ -580,6 +634,27 @@ const hasEnvVars = computed(() => {
   return Array.isArray(ev) && ev.length > 0
 })
 
+const pushConfigSummary = computed(() => {
+  const nc = plan.value.notification_config || {}
+  const lines: string[] = []
+  if (nc.email?.enabled) {
+    const n = Array.isArray(nc.email.recipients) ? nc.email.recipients.length : 0
+    if (n > 0) lines.push(t('testing.plans.detail.pushEmailOn', { count: n }))
+    else lines.push(t('testing.plans.detail.pushEmailEmpty'))
+  }
+  if (nc.webhook?.enabled && nc.webhook.url) {
+    lines.push(t('testing.plans.detail.pushWebhookOn', { type: nc.webhook.type || 'dingtalk' }))
+  } else if (nc.webhook?.enabled) {
+    lines.push(t('testing.plans.detail.pushWebhookNoUrl'))
+  }
+  if (nc.dingtalk?.enabled) {
+    const cnt = Array.isArray(nc.dingtalk.group_ids) ? nc.dingtalk.group_ids.length : 0
+    if (cnt > 0) lines.push(t('testing.plans.detail.pushDingtalkOn', { count: cnt }))
+    else lines.push(t('testing.plans.detail.pushDingtalkNoGroup'))
+  }
+  return lines.length ? lines.join('\n') : t('testing.plans.detail.pushConfigNone')
+})
+
 const execHeaders = computed(() => [
   { title: '#', key: 'id', width: 60 },
   { title: t('testing.plans.tableHeaders.status'), key: 'status', width: 100 },
@@ -909,11 +984,58 @@ onBeforeUnmount(() => {
   font-size: 13px;
 }
 
+.run-config-row {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 0;
+  padding: 12px 0;
+  line-height: 1.5;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.run-config-row--last {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ext-title + .run-config-row {
+  padding-top: 0;
+}
+
+.ext-key--wide {
+  min-width: 148px;
+  max-width: 42%;
+  padding-right: 8px;
+}
+
+.ext-val-inline {
+  flex: 1;
+  min-width: 0;
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.push-summary {
+  white-space: pre-line;
+  color: rgba(0, 0, 0, 0.75);
+  line-height: 1.55;
+}
+
 .ext-key {
   min-width: 80px;
   color: #999;
   font-weight: 500;
   flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+  .ext-key--wide {
+    max-width: none;
+    flex: 0 0 auto;
+  }
+  .run-config-row {
+    flex-direction: column;
+    gap: 6px;
+  }
 }
 
 .ext-val {
